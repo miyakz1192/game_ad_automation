@@ -2,49 +2,10 @@
 androidゲームの広告を自動操作する
 ================================================
 
+画面の操作をするのはscrcpyというOSSが一番よい様子
+
 https://github.com/Genymobile/scrcpy
 
-
-https://qiita.com/tabbyz/items/5f6cec37e1d525a8e4d5
-
-https://developers.cyberagent.co.jp/blog/archives/29686/
-
-https://qiita.com/ooba1192/items/79c3aae8f48cd663aefd
-
-
-https://maku77.github.io/android/adb/connect-adb-with-tcpip.html
-
-ADB を TCP/IP 接続に切り替える
-ADB 接続を USB 経由ではなく、LAN 接続 (TCP/IP プロトコル）で行うようにする手順です。 Android 端末側の ADB デーモンを TCP/IP モードに切り替えないといけないので、この設定自体は USB 接続された状態で行う必要があります。 一度設定してしまえば、次回からは USB ケーブルは必要なくなります。
-
-Android 端末側の「開発者向けオプション」を有効にして USB 接続する
-[設定] > [デバイス情報] に移動して、[ビルド番号] を 7 回タップすると「開発者向けオプション」が有効になります。
-（USB 接続された状態で）Android 端末側の ADB デーモンを TCP/IP 接続モードにする
-adb tcpip 5555
-Android 端末の LAN 内の IP アドレスを確認しておく
-adb shell "ip addr | grep inet"
-（この時点で USB ケーブルは外して OK）
-PC から Android 端末のアドレスとポート番号を指定して TCP/IP で接続
-adb connect 192.168.11.6:5555
-USB 接続に戻したいときは、adb usb コマンドを実行します。
-
-
-https://stackoverflow.com/questions/17626691/adb-device-offline-with-adb-wireless
-For me the complete steps that worked were :
-
-Settings -> Developer options -> Revoke USB debugging authorizations (clear the list of authorized PCs).
-
-Set USB Debugging OFF.
-
-In Terminal write : adb kill-server
-
-Then : adb start-server
-
-Then : adb connect xx.xx.xx.xx:5555 (the devices ip), it should say unable to connect.
-
-Now turn ON USB debugging again and type the adb connect xx.xx.xx.xx:5555 again.
-
-It should now ask for authorization and you are back online without needing to connect cable to USB, only wifi used.
 
 scrpyが使えるようになるまで
 =============================
@@ -69,7 +30,7 @@ scrcpyをgit cloneしてくる。次に以下を実施する。
   # server build dependencies
   sudo apt install openjdk-11-jdk
 
-ただし、wirelessを使おうと考えると、ubuntu 20.04のadbではscrpyが動作しないため、
+ただし、wirelessデバッグを使おうと考えると、ubuntu 20.04のadbではscrpyが動作しないため、
 最新のadbをインストールする必要がある。
 
 2) scrcpyをインストールする::
@@ -253,6 +214,29 @@ scrcpyをverboseで起動してみて適当に画面操作してみると、以�
     143     }
     144 }
 
+     85 sc_mouse_processor_process_mouse_click(struct sc_mouse_processor *mp,
+     86                                     const struct sc_mouse_click_event *event) {
+     87     struct sc_mouse_inject *mi = DOWNCAST(mp);
+     88 
+     89     struct sc_control_msg msg = {
+     90         .type = SC_CONTROL_MSG_TYPE_INJECT_TOUCH_EVENT,
+     91         .inject_touch_event = {
+     92             .action = convert_mouse_action(event->action),
+     93             .pointer_id = POINTER_ID_MOUSE,
+     94             .position = event->position,
+     95             .pressure = event->action == SC_ACTION_DOWN ? 1.f : 0.f,
+     96             .buttons = convert_mouse_buttons(event->buttons_state),
+     97         },
+     98     };
+     99 
+    100     if (!sc_controller_push_msg(mi->controller, &msg)) {
+    101         LOGW("Could not request 'inject mouse click event'");
+    102     }
+    103 }
+
+
+
+
 ここ。::
 
     146 void
@@ -300,38 +284,20 @@ scrcpyをverboseで起動してみて適当に画面操作してみると、以�
      81     }
      82 }
 
+マウスボタンに関する本丸はここか::
 
-んで、ここ::
+    620 static void
+    621 sc_input_manager_process_mouse_button(struct sc_input_manager *im,
+    622                                       const SDL_MouseButtonEvent *event) {
+    623     struct sc_controller *controller = im->controller;
+    624 
+    625     if (event->which == SDL_TOUCH_MOUSEID) {
+    626         // simulated from touch events, so it's a duplicate
+    627         return;
+    628     }
 
-   590 static void
-    591 sc_input_manager_process_touch(struct sc_input_manager *im,
-    592                                const SDL_TouchFingerEvent *event) {
-    593     if (!im->mp->ops->process_touch) {
-    594         // The mouse processor does not support touch events
-    595         return;
-    596     }
-    597 
-    598     int dw;
-    599     int dh;
-    600     SDL_GL_GetDrawableSize(im->screen->window, &dw, &dh);
-    601 
-    602     // SDL touch event coordinates are normalized in the range [0; 1]
-    603     int32_t x = event->x * dw;
-    604     int32_t y = event->y * dh;
-    605 
-    606     struct sc_touch_event evt = {
-    607         .position = {
-    608             .screen_size = im->screen->frame_size,
-    609             .point =
-    610                 sc_screen_convert_drawable_to_frame_coords(im->screen, x, y),
-    611         },
-    612         .action = sc_touch_action_from_sdl(event->type),
-    613         .pointer_id = event->fingerId,
-    614         .pressure = event->pressure,
-    615     };
-    616 
-    617     im->mp->ops->process_touch(im->mp, &evt);
-    618 }
+
+
 
 以下で呼び出し::
 
@@ -764,13 +730,203 @@ eventを受け付けるためには、一度、SDL_WaitEventを実行しない�
 
   660  ffmpeg -i /tmp/a.mp4  -vcodec png -frames:v 1 /tmp/a.png
 
+実験(オリジナルスレッドのscrpyでの生成)
+===========================================
+
+まず、10secに一回メッセージを表示するスレッドを作ってみる::
+
+  a@scrcpy:~/scrcpy$ grep -rn run_recorder app/src/ -B1 -A10
+  app/src/recorder.c-135-static int
+  app/src/recorder.c:136:run_recorder(void *data) {
+  app/src/recorder.c-137-    struct sc_recorder *recorder = data;
+  app/src/recorder.c-138-
+  app/src/recorder.c-139-    for (;;) {
+  app/src/recorder.c-140-        sc_mutex_lock(&recorder->mutex);
+  app/src/recorder.c-141-
+  app/src/recorder.c-142-        while (!recorder->stopped && sc_queue_is_empty(&recorder->queue)) {
+  app/src/recorder.c-143-            sc_cond_wait(&recorder->queue_cond, &recorder->mutex);
+  app/src/recorder.c-144-        }
+  app/src/recorder.c-145-
+  app/src/recorder.c-146-        // if stopped is set, continue to process the remaining events (to
+  --
+  app/src/recorder.c-289-    LOGD("Starting recorder thread");
+  app/src/recorder.c:290:    ok = sc_thread_create(&recorder->thread, run_recorder, "scrcpy-recorder",
+  app/src/recorder.c-291-                          recorder);
+  app/src/recorder.c-292-    if (!ok) {
+  app/src/recorder.c-293-        LOGE("Could not start recorder thread");
+  app/src/recorder.c-294-        goto error_avio_close;
+  app/src/recorder.c-295-    }
+  app/src/recorder.c-296-
+  app/src/recorder.c-297-    LOGI("Recording started to %s file: %s", format_name, recorder->filename);
+  app/src/recorder.c-298-
+  app/src/recorder.c-299-    return true;
+  app/src/recorder.c-300-
+  a@scrcpy:~/scrcpy$ 
+
+プロトタイプ定義は以下。::
+
+  bool
+  sc_thread_create(sc_thread *thread, sc_thread_fn fn, const char *name,
+                   void *userdata);
 
 
+画面サイズの考察
+=======================
+
+INFO: Initial texture: 1080x2400
+INFO: New texture: 864x1920
+
+scrcpyの動作としては、最初にInitial textureで画面を取ろうとして、lilyの解像度が以下のため、
+エラーが発生して、New textureに補正した模様。::
+
+  miyakz@lily:~$ xdpyinfo | grep dimensions
+    dimensions:    1366x768 pixels (361x203 millimeters)
+  miyakz@lily:~$ 
+
+※ widthは足りているけど、heightが足りていない。
+  
+マウスクリックイベントが発生する場合、scrcpyで最初に認識する座標は、
+Xwindow上に描画されたゲーム画面の座標になる(1)。
+
+一方で、scrcpy内で認識されているゲームの画像が上記の"New texture"のサイズになるので、(1)から
+New texture上の座標系に変換される(2)。
+
+この座標系と実際のスマホの座標系が1:1対応になるようにどこかで変換されるのかな？
+
+game ad automationアプリとしては、(1)と(2)のどちらを取得するべきなんだろう。
+
+初版はscrcpyで画面をmp4として取って、それをffmpegでpng(またはjpgでも何でも良いが)に変換する予定なので、
+取れた画像のサイズを確認するべき(なぜならそれをssdでclose画像を検出する対象の画像になるため)
+(どうも、scrcpyにはスマホから取得する画面のサイズ通り、1080*2400でxwindow上に表示するようなオプションは無い様子。)
+
+pngにした結果は以下で、(2)のサイズと一致する。::
+
+  a@scrcpy:~/scrcpy$ file /tmp/a.png 
+  /tmp/a.png: PNG image data, 864 x 1920, 8-bit/color RGB, non-interlaced
+  a@scrcpy:~/scrcpy$ 
+
+と、いうことは、game ad automation(gaa)まわりで、以下のような座標系変換が行われる？
+
+整理すると座標系はざっくり以下の3種あるらしい
+
+A) スマホ本体の本当の座標系(自分のOPPOだと1080 x 2400のそれ)
+B) scrcpyが表示するXWindowの座標系
+C) scrcpyが内部で管理するスマホ画面の座標系(上記,New textureの864 x 1920)
+
+
+1) scrcpyを起動させる。
+2) pngを取得する。この画像は(C)の座標系
+3) gaaがscrcpyを起動して、2)の画像を読み込んでcloseの位置を検出。このcloseの座標X,Yは(C)の座標系。次にMOUSE BOTTON DOWNするためにXwindowの(B)の座標系に変換する必要がある(X' y')
+4) その後、scrcpyが(X' Y')を(X Y)に変換して(ややこしいな!)、スマホにクリック信号を送信
+
+理想としては、3)を経由せずに単に2)から4)の呼び出しが可能になれば物事は超シンプルなんだが。
+ヒントとしては、sc_input_manager_process_mouse_buttonの以下のコードかなぁ。::
+
+    681     struct sc_mouse_click_event evt = {
+    682         .position = {
+    683             .screen_size = im->screen->frame_size,
+    684             .point = sc_screen_convert_window_to_frame_coords(im->screen,
+    685                                                               event->x,
+    686                                                               event->y),
+    687         },
+    688         .action = sc_action_from_sdl_mousebutton_type(event->type),
+    689         .button = sc_mouse_button_from_sdl(event->button),
+    690         .buttons_state =
+    691             sc_mouse_buttons_state_from_sdl(sdl_buttons_state,
+    692                                             im->forward_all_clicks),
+    693     };
+    694 
+    695     assert(im->mp->ops->process_mouse_click);
+    696     im->mp->ops->process_mouse_click(im->mp, &evt);
+
+L681の構造体のあたりの.pointメンバがB)からC)への変換された後のデータが入っていると思われる。
+なので、event_loop関数の時点で、imとかim->mp->ops。。。などが取得できればＯＫな気がする。
+
+できそうなので、event_loopの時点で直接process_mouse_clickを呼び出すようにしてみる。
+できた。::
+
+  a@scrcpy:~/scrcpy$ DEBUG: [mdown_input] event=1, data=864,0
+  DEBUG: [mdown input] handle SDL MOUSEMOTION
+  VERBOSE: input: touch [id=mouse] down position=864,0 pressure=1 buttons=000001
+
+こんな感じで、Xwindow上でゲームのアイコンにマウスカーソルを合わせてMOUSE DOWN/UPした時に表示された
+座標(152,192)に対して、pipeから(CLIから)同じ座標を指示して、スマホ上ゲームアイコンを正しくクリックできた!::
+
+  a@scrcpy:~/scrcpy$ DEBUG: [mdown_input] event=1, data=152,192
+  DEBUG: [mdown input] handle SDL MOUSEMOTION
+  VERBOSE: input: touch [id=mouse] down position=152,192 pressure=1 buttons=000001
+  VERBOSE: input: touch [id=mouse] up   position=152,192 pressure=0 buttons=000001
+
+コードは思いっきり汚いが、とりあえず動くコードはできた。
+コマンドラインは以下のような感じ。::
+
+  a@scrcpy:~/scrcpy$ scrcpy --tcpip=192.168.110.178:38665 --verbosity=verbose & sleep 10 ; echo "152,192" > mdown_input_pipe
+
+デバッグ出力した際にスマホ画面上に「リモートでバッグ接続されました」的な画面が出て、そのせいでクリックが即座にできないので、
+10秒の待を入れている
+
+ただし、その通知画面をタップすると出ないようにも設定出来る様子。なので、GAAを他のデバイスに適用する場合は、
+画面の解像度などを含めてカスタマイズする必要があるかもしれない。スマホの世界はいろいろなデバイスがあるので、
+非常に奥が深い（というか、めんどくさい）
+
+結果の成果物を乗せておく::
+
+  a@scrcpy:~/scrcpy$ git remote -v
+  origin	https://github.com/miyakz1192/scrcpy.git (fetch)
+  origin	https://github.com/miyakz1192/scrcpy.git (push)
+  a@scrcpy:~/scrcpy$ 
   
   
-    
-    
+  commit 00a1f758546e225d7326c31b7efd3bed315edbce (HEAD -> test, origin/test)
+  Author: kazuhiro MIYASHITA <miyakz1192@gmail.com>
+  Date:   Thu Dec 8 16:28:19 2022 +0000
+  
+      mouse click automation base added
+
+さらなる改善(backlog)
+========================
+
+struct scrcpyさえあれば、直接(C)の座標系でマウスクリックイベントを発生させることができたため、
+SDL_WarpMouseInWindowによる操作は全く不要だと思われる。
+今後はその点をリファクタしたい。が、とりあえず、後回しにしておく。。。
+
+今後について
+===============
+
+close画像の認識部分、クリック信号を送信する部分が出来たため、
+あとはアルゴリズムの構築をしてgameの広告を見る操作を自動化するプログラミングに移りたい。
+
+アルゴリズム
+-----------------
+
+まずは、以下の超単純なやつを作ってみる。
+
+ゲーム画像を取得する。
+closeが現れるのを待つ
+現れたらそこをクリックする
 
 
+実は、これだけだとあんまり頭が良くない。
+
+A)広告を見るのを繰り返す。という作業全体ができていない
+B)close以外の記号(広告を見ていると時々出現する>>のようなもの）の対応が未
+C)closeがほかの背景に薄くオーバーラップした際の認識精度がちょっと不安
+D)他の解像度が異なるデバイスへの対応
+
+A)は実は、広告を見るボタンの認識が必要。広告が見れなくなったらグレーになるようなケースが多く。
+広告がまだ見れる状態の広告を見るボタンのAI認識が必要。
+
+アルゴリズムとしては、広告が見れる状態のボタンをひたすら押して、広告を流し、closeを見つけたらそれを押す（最初に戻る）という
+ことを繰り返せば良い気がする。そして、広告が見れるボタンがなくなったら（検出できなくなったら終了）というイメージ。
+ここまでのアルゴリズムは特定のゲーム用途になる。
+
+アルゴリズム自体はＡＩでは難しそうなので、ゲームごとに作りこみが必要そうだし、
+広告が見れる状態の広告ボタンもゲームごとにマチマチなので、その都度画像を採取してＡＩに学習させる必要があるかもしれない。
+
+しかも、B)の">>"の要素も取り入れたアルゴリズムを考慮する必要がある。
 
 
+B)は単純に画像を採取して学習させるという作業が必要
+C)も同じかもしれない
+
+D)はまだ良くわからない。とりあえず、自分のスマホ向けに開発して、他のデバイスにも展開するようなイメージかなぁ。
