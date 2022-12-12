@@ -4,6 +4,7 @@ import os
 import time
 import subprocess
 from signal import SIGINT
+import random
 
 
 #necessary environments values
@@ -53,35 +54,52 @@ class ScrcpyService(Service):
         command = ["/usr/local/bin/scrcpy", "--tcpip=" + self.phone(), "--verbosity=verbose", "--record=/tmp/a.mp4"]
         print("DEBUG: %s" % " ".join(command))
         proc = subprocess.Popen(command)
-        time.sleep(3)
+        time.sleep(5)
         proc.send_signal(SIGINT)
         time.sleep(5)
         command = ["ffmpeg", "-i", "/tmp/a.mp4",  "-frames:v", "1", "/tmp/gaa_screen_temp.jpg", "-y"]
-        subprocess.check_output(command)
+        #subprocess.check_output(command)
+        subprocess.call(command)
         return ScreenShot("/tmp/gaa_screen_temp.jpg")
+
+    def touch_position(self, pos):
+        #TODO:
+        print("INFO: touch_position %s" % str(pos))
 
 class PytorchService(Service):
     def __init__(self,name):
         super().__init__(name)
 
+    def get_close_position(self, screen_shot):
+        #TODO:
+        #send screen shot to pytorch service
+        #request to AI program
+        #parse result and extract close position
+        #None is no position found, otherwise return (x,y)
+        if int(random.random() * 10) % 2 == 0:
+            return (1192, 1192)
+
+        return None
+
 class GameAdAutomation():
 
     def __init__(self):
         self.scrcpy_s = ScrcpyService("scrcpy")
-        self.pytorch_s = ScrcpyService("pytorch")
+        self.pytorch_s = PytorchService("pytorch")
         self.scrcpy_s.show()
         self.pytorch_s.show()
     
-    def wait_for_close(self, timeout=10):
-        print("TRACE:wait_for_close. timeout=%d" % (timeout) )
-    
-    def touch_to_close(self):
-        print("TRACE:touch_to_close")
-
     def naive_algo(self):
-        screen_shot = self.scrcpy_s.get_screen_shot()
-        self.wait_for_close()
-        self.touch_to_close()
+        print("INFO: naive_algo")
+        while True:
+            screen_shot = self.scrcpy_s.get_screen_shot()
+            pos = self.pytorch_s.get_close_position(screen_shot)
+            if pos is not None:
+                self.scrcpy_s.touch_position(pos)
+            else:
+                print("INFO: no position found")
+            print("INFO: sleep 10")
+            time.sleep(10)
 
 
 def main():
