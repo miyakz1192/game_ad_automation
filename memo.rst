@@ -968,8 +968,12 @@ Date:   Wed Dec 14 15:04:17 2022 +0000
 
     detection_result.py added
 
+　・screen_shotの左上400 x 400画像と右上 400 x 400画像を生成する。
+　・screen_shotをscpで送る(serviceクラスのscp対応、sshpassが使える)
+　・pytorchクラス側でdetectを実行する
 
-
+こちらもＯＫ。ただ、closeじゃない所も変に認識していそうできになる。
+今後debuggingしていくこととする。
 
 
 2022/12/14
