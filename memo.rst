@@ -948,6 +948,35 @@ D)はまだ良くわからない。とりあえず、自分のスマホ向けに
 ==========
 
 2022/12/14
+----------------
+
+以下に取り組む。
+
+pytorch側の改造
+　・detectした結果をpythonのデータファイル(たしか、pickleとかいったやつ)で、保存する
+
+→　DONE
+commit e39a77f459ac568a259531f0a3959280d9e263a6 (HEAD -> gaa_v1, origin/gaa_v1)
+Author: kazuhiro MIYASHITA <miyakz1192@gmail.com>
+Date:   Wed Dec 14 14:56:00 2022 +0000
+
+    pickle data save/load support
+
+commit cebc638fe83c8bc6eab0dc85c1c4f186c90793bf (HEAD -> gaa_v1, origin/gaa_v1)
+Author: kazuhiro MIYASHITA <miyakz1192@gmail.com>
+Date:   Wed Dec 14 15:04:17 2022 +0000
+
+    detection_result.py added
+
+　・screen_shotの左上400 x 400画像と右上 400 x 400画像を生成する。
+　・screen_shotをscpで送る(serviceクラスのscp対応、sshpassが使える)
+　・pytorchクラス側でdetectを実行する
+
+こちらもＯＫ。ただ、closeじゃない所も変に認識していそうできになる。
+今後debuggingしていくこととする。
+
+
+2022/12/14
 ---------------
 
 超単純なバージョンの完成をまずは目指す。
@@ -957,9 +986,11 @@ pytorch側の改造
 　・detectした結果をpythonのデータファイル(たしか、pickleとかいったやつ)で、保存する
 
 gaa側の改造
+　・screen_shotの左上400 x 400画像と右上 400 x 400画像を生成する。
 　・screen_shotをscpで送る(serviceクラスのscp対応、sshpassが使える)
 　・pytorchクラス側でdetectを実行する
 　・結果を取得する
+　　※　各画像（左上、右上）について繰り返して、結果をマージてscoreでソートする
 　・（pickleファイルを開き）結果を解析する(closeのスコアがもっとも高いpositionを抽出)
 　・ためしに、画面に表示してみる
 
