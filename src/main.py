@@ -14,6 +14,10 @@ from tensorflow.keras.utils import array_to_img
 
 from detection_result import *
 
+import torch
+
+import pdb
+
 
 
 #necessary environments values
@@ -43,13 +47,19 @@ class Service:
         res = subprocess.check_output(command)
         print("DEBUG: %s" % str(res))
 
-    def scp(self,path_from, path_to):
+    def scp_upload(self,path_from, path_to): #path_from(local) , path_to(remote)
         # sshpass -p a scp -o StrictHostKeyChecking=no <path_from> <user>@<host>:<path_to>
         command = ["sshpass", "-p" , self.passwd(), "scp", "-o" , "StrictHostKeyChecking=no" , path_from, self.user()+"@"+self.host()+":"+path_to]
         print("DEBUG: %s" % " ".join(command))
         res = subprocess.check_output(command)
         print("DEBUG: %s" % str(res))
 
+    def scp_download(self,path_from, path_to): #path_from(remote) , path_to(local)
+        # sshpass -p a scp -o StrictHostKeyChecking=no <path_from> <user>@<host>:<path_to>
+        command = ["sshpass", "-p" , self.passwd(), "scp", "-o" , "StrictHostKeyChecking=no" , self.user()+"@"+self.host()+":"+path_from, path_to]
+        print("DEBUG: %s" % " ".join(command))
+        res = subprocess.check_output(command)
+        print("DEBUG: %s" % str(res))
 
 
 class ScreenShotFile():
@@ -67,6 +77,15 @@ class ScreenShotFile():
     def associate_image(self, screen_shot_image):
         self.image = screen_shot_image
 
+class CoordinateSystem():
+    def right_upper_to_normal(self, res_ru, screen_shot_image, width=400):
+        for i in res_ru.res:
+            xorg = screen_shot_image.image.shape[1] - width
+            if xorg < 0:
+                xorg = 0
+            temp = i.rect.x
+            i.rect.x = i.rect.x + xorg
+#            print("[DEBUG] before=%d, after=%d id=%d" % (temp, i.rect.x, id(i)))
 
 #retain image as numpy array
 class ScreenShotImage():
@@ -108,15 +127,23 @@ class ScrcpyService(Service):
         print("INFO: touch_position %s" % str(pos))
 
 class PytorchService(Service):
+    REMOTE_RESULT_JPG_FILE_PATH = "~/pytorch_ssd/result.jpg"
+    LOCAL_RESULT_JPG_FILE_PATH = "./data/result.jpg"
+    REMOTE_PICKLE_FILE_PATH = "~/pytorch_ssd/result_data.pickle"
+    LOCAL_PICKLE_FILE_PATH = "./data/result_data.pickle"
+
     def __init__(self,name):
         super().__init__(name)
 
     def call_predictor(self, screen_shot_file):
-        #TODO: get pickle result file from pytorch_ssd service to this
+        #get pickle result file from pytorch_ssd service to this
+        #save result.jpg to debugging
         res = DetectionResultContainer()
         self.ssh(["cd ~/pytorch_ssd; python3 predict.py %s" % screen_shot_file.file_path])
+        self.scp_download(self.REMOTE_RESULT_JPG_FILE_PATH, self.LOCAL_RESULT_JPG_FILE_PATH)
+        self.scp_download(self.REMOTE_PICKLE_FILE_PATH    , self.LOCAL_PICKLE_FILE_PATH)
 
-        #TODO: save result.jpg to debugging
+        res.load(self.LOCAL_PICKLE_FILE_PATH)
         return res
 
     def get_close_position(self, screen_shot_file):
@@ -138,23 +165,26 @@ class PytorchService(Service):
         ru_f.save()
 
         #send lu and ru to pytorch service
-        self.scp(lu_f.file_path, lu_f.file_path)
-        self.scp(ru_f.file_path, ru_f.file_path)
+        self.scp_upload(lu_f.file_path, lu_f.file_path)
+        self.scp_upload(ru_f.file_path, ru_f.file_path)
 
         #analyze image file by pytorch service and get result
         res = DetectionResultContainer()
 
-        res.merge(self.call_predictor(lu_f))
+        res_lu = self.call_predictor(lu_f)
 
+        #adjust ru result from ru space to true screen_shot space
         res_ru = self.call_predictor(ru_f)
-        #TODO:adjust ru result from ru space to true screen_shot space
-        adjust_right_upper_result(res_ru)
+        c = CoordinateSystem()
+        c.right_upper_to_normal(res_ru,screen_shot_image)
+
+        res.merge(res_lu)
+        res.merge(res_ru)
 
         res.sort_by_score()
 
-        #None is no position found, otherwise return (x,y)
-        if int(random.random() * 10) % 2 == 0:
-            return (1192, 1192)
+        print("[DEBUG] DetectionResultContainer res")
+        res.print()
 
         #TODO:show result.jpg for debuggin
 
