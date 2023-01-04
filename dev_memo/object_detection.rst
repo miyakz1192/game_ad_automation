@@ -378,7 +378,262 @@ hit enter file==> imgdata/ru_Screenshot_2022-12-21-16-07-09-38_56bd83b73c18fa95b
 
 要するに、SSDでざっくりと物体を検出したら、その先は厳密な何らかの方法でバッテンかどうかを最終判断するような感じの処理が良いのかな？？
 
+トライ5
+========
+
+ゼロつくdeep learningで認識度99%の畳み込みネットワークが最後に紹介されていたため、この活用を検討する。
+要するに、SSDでざっくりと物体を検出した後、その画像がcloseか否かを別のAIで判別するというアイデア。
+
+この作戦は、実行時間を要する(SSDによる物体検出時間＋CONVNETによる画像判別時間）問題があるが、精度を向上したいため、
+実行時間はとりえず、度外視で考えてみる。
+
+ここで、漢字、ひらがな、カタカナをja_charとよぶことにする。
+
+ひとまず、ゼロつくの8章、Deep Convnet(DCONVNET)に対して、ja_char画像1000文字+closeを判別させることを考えてみる。
+それには、ja_char1000文字の各文字をdata augmentationして300文字くらいに水増しする。よって、ja_char30万データセットの画像が出来上がる計算である。
+それにcloseももちろん加えるので正確には+300画像である。
+
+90%以上の確率でja_charとcloseを区別できるようにしたい。
+
+せっかくテスト画像生成フレームワークを作ったため、それを活用する。
+
+DCONVNETのトレーニング/テストデータの構造について
+--------------------------------------------------------
+
+例えば、mnistデータの読み込みのコードは以下。::
+
+  (x_train, t_train), (x_test, t_test) = load_mnist(flatten=False)
+
+  print(x_train.shape)
+  print(t_train.shape)
+  
+  print(x_test.shape)
+  print(t_test.shape)
+  
+  (60000, 1, 28, 28)
+  (60000,)
+  (10000, 1, 28, 28)
+  (10000,)
+  
+ここで、::
+
+  (60000, 1, 28, 28)
+   ^^^^^  ^^ ^^  ^^
+   画像数 チャネル数  width , heightだから
+
+また、t_については、ラベル。::
+
+  img = x_train[0]
+  label = t_train[0]
+  print(label)
+
+imgは数字の5の画像。labelには"5"(整数値)が入っている
+
+今回、どうするか？
+-----------------------
+
+各ja_char,closeにたいして、数値を割り当てる。closeは一番最後で1001で良いとする。
+まず、今回の実験は自分の中で結構大規模な感じがするので、ja_char_big_testブランチを作ってテストする。
+
+バックアップは以下に採取しておいた。::
+  
+  a@dataaug:~$ ls -ls backup/
+  total 16656
+  16656 -rw-rw-r-- 1 a a 17053424 Dec 30 15:57 dl_image_manager_20221230.tar.gz
+  a@dataaug:~$ 
+
+まず、projectの作り方を工夫する必要がある。
+ja_charそれぞれに対して、0からの連番で割当する。
+projects/ja_char_<number>/という形式にする。それぞれのja_char_<number>に対して、
+ラベル(<number>)とja_charの実体（例：漢字）が割り当てられる。
+各ja_charに対して、普通にmasterが格納される。
+
+このprojectをどうやって自動生成するか。ja_charのdaugを工夫してやる必要がある。
+
+これを使って、各ja_charの画像を創りだしたら、それに応じてprojectを作って、
+masterをそこに置くイメージ。
+
+今回の実験では400 x 400に拡張せずに、64 x 64で一回やって見る。
+
+結果として、1000文字の画像をdata augmentationしてclose/closewを作った。
+closeは黒背景に白地のバッテンなので、他のja_charと条件が違う(白地に黒字）ので、とりあえず除外してみた。
+現在、build_all.py中。CPU1個なので時間がかかるのでしばらく放置。
+
+次にbuild data setが動くかどうかを考える。
+DCONVNET用のdata setを作る必要がある。pytorch_ssdとは違うデータ・セットになる。
+今回は、pytorch_ssd用のデータ・セットをさらに、DCONVNET用に解釈し、pickleとして保存するスクリプト(dataset/gaa.py)を作成することにした。
 
 
+dataset/gaa.pyについて
+----------------------
 
+dataset/gaa.pyの外部仕様として、例えば、サブディレクトリch09にchange dirして、
+python3 ../dataset/gaa.pyのように使用する。
 
+中身の考慮点は以下。
+
+build data setまでは現状のスクリプト(build_data_set.py)を使えるが、
+それを読み込んでデータを返す関数を設計する必要がある。
+
+ja_charに対して割り当てられるべきラベルについては、画像ファイルja_char_<label_num>_<number>.jpg
+にすでに埋め込まれている。
+
+ImageSets/Main/train.txtを読み込み、行を読み込む
+   ja_char_<label_num>_<number>のパターン
+     ja_char_<label_num>_<number>.jpgを読み込みnumpy配列で保持(データ)。
+　　 labelを読み込み、label-データのリストのハッシュにストア。labelに対応するデータリストにデータをappendする
+　　ラベルチェック用のリストにlabelをappendする
+   closew_<number>のパターン
+     closew_<number>.jpgを読み込みnumpy配列で保持(データ)。
+     label=1000として、上記ハッシュのデータリストにデータをappend
+
+   closewのlabel=1000が上記チェック用リストに存在するかを確認して、存在するならコンフリクトとしてエラー終了(raise)
+
+   ハッシュをkey,valでぐるぐる回しながら、データとそれに対するラベルの配列を作っていく
+
+test.txtについても同様に実施して、データとラベルの配列を作っていく
+　
+     
+本当は、ラベルとprojectの対応を厳密に管理するデータベースが必要なんだろうな。。。。
+かなり改善の余地ありかも。
+
+とりあえず、ja_charは0~999までなので、1000をclosewにlabelを割り当てる(ハードコーディング)
+
+dataset/gaa.py作成時に出くわした問題
+----------------------------------------------
+
+np.arrayのappendを使うとすごく重いので、np.stackを使うと高速に実行できる。やはり、numpyはfor文を使ってはダメ。
+
+今度、np.stackで操作すると、すべての配列のサイズが合っていないとだめとか。
+400 x 400なデータを取り除いて、64 x 64で統一する作業というか、確認。
+もしかしたら、projectをbuildするときに、ゴミっぽい400 x 400(最近、400 x 400 から 64 x 64に変更したので）が残っていた可能性あり。
+projectをbuildするスクリプトでbuild配下をcleanする必要あるんではないか。
+
+次にch09/train_deepnet.py実行時に以下の問題が発生。::
+
+  /home/a/deep-learning-from-scratch/ch09
+  Traceback (most recent call last):
+    File "train_deepnet.py", line 25, in <module>
+      trainer.train()
+    File "/home/a/deep-learning-from-scratch/ch09/../common/trainer.py", line 71, in train
+      self.train_step()
+    File "/home/a/deep-learning-from-scratch/ch09/../common/trainer.py", line 44, in train_step
+      grads = self.network.gradient(x_batch, t_batch)
+    File "/home/a/deep-learning-from-scratch/ch09/deep_convnet.py", line 102, in gradient
+      self.loss(x, t)
+    File "/home/a/deep-learning-from-scratch/ch09/deep_convnet.py", line 83, in loss
+      y = self.predict(x, train_flg=True)
+    File "/home/a/deep-learning-from-scratch/ch09/deep_convnet.py", line 79, in predict
+      x = layer.forward(x)
+    File "/home/a/deep-learning-from-scratch/ch09/../common/layers.py", line 57, in forward
+      out = np.dot(self.x, self.W) + self.b
+    File "<__array_function__ internals>", line 180, in dot
+  ValueError: shapes (100,4096) and (1024,50) not aligned: 4096 (dim 1) != 1024 (dim 0)
+  a@dataaug:~/deep-learning-from-scratch/ch09$ 
+
+np.dotで行列のサイズが合っていない。ってか、どのレイヤで発生しているんだ？ってことでデバッグメッセージを追加。::
+  
+  /home/a/deep-learning-from-scratch/ch09
+  INFO: forward conv1
+  INFO: forward conv2
+  INFO: forward pooling1
+  INFO: forward conv3
+  INFO: forward conv4
+  INFO: forward pooling2
+  INFO: forward conv5
+  INFO: forward conv6
+  INFO: forward poolong3
+  INFO: forward affine1
+  Traceback (most recent call last):
+    File "train_deepnet.py", line 25, in <module>
+      trainer.train()
+    File "/home/a/deep-learning-from-scratch/ch09/../common/trainer.py", line 71, in train
+      self.train_step()
+    File "/home/a/deep-learning-from-scratch/ch09/../common/trainer.py", line 44, in train_step
+      grads = self.network.gradient(x_batch, t_batch)
+    File "/home/a/deep-learning-from-scratch/ch09/deep_convnet.py", line 102, in gradient
+      self.loss(x, t)
+    File "/home/a/deep-learning-from-scratch/ch09/deep_convnet.py", line 83, in loss
+      y = self.predict(x, train_flg=True)
+    File "/home/a/deep-learning-from-scratch/ch09/deep_convnet.py", line 79, in predict
+      x = layer.forward(x)
+    File "/home/a/deep-learning-from-scratch/ch09/../common/layers.py", line 61, in forward
+      out = np.dot(self.x, self.W) + self.b
+    File "<__array_function__ internals>", line 180, in dot
+  ValueError: shapes (100,4096) and (1024,50) not aligned: 4096 (dim 1) != 1024 (dim 0)
+  a@dataaug:~/deep-learning-from-scratch/ch09$ 
+
+一番最初のアフィンレイヤで発生。もうちょっとデバッガで詳しく調べてみると。::
+  
+  > /home/a/deep-learning-from-scratch/common/layers.py(63)forward()
+  -> out = np.dot(self.x, self.W) + self.b
+  (Pdb) self.x.shape
+  (100, 4096)
+  (Pdb) self.W.shape
+  (1024, 50)
+  (Pdb) self.b.shape
+  (50,)
+  (Pdb) np.dot(self.x, self.W).shape
+  *** ValueError: shapes (100,4096) and (1024,50) not aligned: 4096 (dim 1) != 1024 (dim 0)
+  (Pdb) 
+
+なるほど、train_deepnet.pyの以下が怪しかった。重みの行列サイズがハードコーディングだった。
+そこで、今回のサイズに合わせて修正（下の行、ハードコーディングに変わりないけどｗ）::
+
+        #self.params['W7'] = weight_init_scales[6] * np.random.randn(64*4*4, hidden_size)
+        self.params['W7'] = weight_init_scales[6] * np.random.randn(4096, hidden_size)
+
+この辺をちゃんと自動化しようとしたら結構大変そうだね。けど、これで動けばとりあえず良し。
+修正後::
+  
+  /home/a/deep-learning-from-scratch/ch09
+  INFO: forward conv1
+  INFO: forward conv2
+  INFO: forward pooling1
+  INFO: forward conv3
+  INFO: forward conv4
+  INFO: forward pooling2
+  INFO: forward conv5
+  INFO: forward conv6
+  INFO: forward poolong3
+  INFO: forward affine1
+  > /home/a/deep-learning-from-scratch/common/layers.py(63)forward()
+  -> out = np.dot(self.x, self.W) + self.b
+  (Pdb) p self.x.shape
+  (100, 4096)
+  (Pdb) p self.W.shape
+  (4096, 5000)
+  (Pdb) np.dot(self.x, self.W).shape
+  (100, 5000)
+  (Pdb) p  self.b.shape
+  (5000,)
+  (Pdb) 
+
+うむ。
+
+DCONVNETでの学習
+----------------------
+
+2023/1/4に学習開始。lossは順調に下がっている感じがする。いろいろと間違いがあるかもしれないが、
+とりあえず動作しているので学習が完了するまでしばらく放置しておく。
+
+ちなみにモデルの構造はこんな感じ。::
+
+  network = DeepConvNet(input_dim=(3,64,64),output_size=1001) #ja_chars and closew 
+  trainer = Trainer(network, x_train, t_train, x_test, t_test,
+                    epochs=200, mini_batch_size=1000,
+                    optimizer='Adam', optimizer_param={'lr':0.001},
+                    evaluate_sample_num_per_epoch=1000)
+  
+      def __init__(self, input_dim=(1, 28, 28),
+                   conv_param_1 = {'filter_num':16, 'filter_size':3, 'pad':1, 'stride':1},
+                   conv_param_2 = {'filter_num':16, 'filter_size':3, 'pad':1, 'stride':1},
+                   conv_param_3 = {'filter_num':32, 'filter_size':3, 'pad':1, 'stride':1},
+                   conv_param_4 = {'filter_num':32, 'filter_size':3, 'pad':2, 'stride':1},
+                   conv_param_5 = {'filter_num':64, 'filter_size':3, 'pad':1, 'stride':1},
+                   conv_param_6 = {'filter_num':64, 'filter_size':3, 'pad':1, 'stride':1},
+                   hidden_size=5000, output_size=10):
+
+バッチサイズを30から1000に変更。output_sizeは当然、1001に変更済み。
+hidden_sizeを50から5000に変更。実は、これは数億程度のオーダーだと良いとのことだが、
+個人ＰＣの範囲だとちょと辛い。
