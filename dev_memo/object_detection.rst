@@ -637,3 +637,252 @@ DCONVNETでの学習
 バッチサイズを30から1000に変更。output_sizeは当然、1001に変更済み。
 hidden_sizeを50から5000に変更。実は、これは数億程度のオーダーだと良いとのことだが、
 個人ＰＣの範囲だとちょと辛い。
+
+2023/1/4から学習を開始しているが、なんか、lossが6.9くらいからサチるし、１つのtrain_stepがやたらと時間がかかって、epochが終了しない。
+ここから、いろいろとパラメータを変えてトライアンドエラーなんだろうけど、途中でいろいろと変えながら、しかも、記録取っていないので、
+よくわからない状態に。
+
+なので、ちゃんと記録を取りながらトライアンドエラーする形にする。
+
+モデル1
+---------
+
+このモデル::
+
+  a@dataaug:~/deep-learning-from-scratch/ch09$ cat deep_convnet.py | grep "def __init__" -A 7
+      def __init__(self, input_dim=(1, 28, 28),
+                   conv_param_1 = {'filter_num':16, 'filter_size':3, 'pad':1, 'stride':1},
+                   conv_param_2 = {'filter_num':16, 'filter_size':3, 'pad':1, 'stride':1},
+                   conv_param_3 = {'filter_num':32, 'filter_size':3, 'pad':1, 'stride':1},
+                   conv_param_4 = {'filter_num':32, 'filter_size':3, 'pad':2, 'stride':1},
+                   conv_param_5 = {'filter_num':64, 'filter_size':3, 'pad':1, 'stride':1},
+                   conv_param_6 = {'filter_num':64, 'filter_size':3, 'pad':1, 'stride':1},
+                   hidden_size=50, output_size=10):
+  a@dataaug:~/deep-learning-from-scratch/ch09$ cat train_deepnet.py | grep Trainer\( -A3
+  trainer = Trainer(network, x_train, t_train, x_test, t_test,
+                    epochs=200, mini_batch_size=1000,
+                    optimizer='Adam', optimizer_param={'lr':0.001},
+                    evaluate_sample_num_per_epoch=1000)
+  a@dataaug:~/deep-learning-from-scratch/ch09$ 
+
+結果、lossが6.9から降下せず。1epochも回らず、、、
+多分、epochが回らんのはtrainデータサイズに対して、bachサイズが小さすぎるのかなと考察。
+よって、ためしに、bach sizeを10000くらいにしてみる（メモリ大丈夫かな)
+
+d like to use Nvidia GPU with TensorRT, please make sure the missing libraries mentioned above are installed properly.
+now dir
+/home/a/deep-learning-from-scratch/ch09
+
+
+INFO: train_size     = 633633
+INFO: iter_per_epoch = 63
+INFO: max_iter       = 12672
+INFO: forward conv1
+INFO: forward conv2
+Killed
+a@dataaug:~/deep-learning-from-scratch/ch09$ 
+
+やっぱり、メモリ不足になるのか。
+
+ミニバッチを5000に。
+
+/home/a/deep-learning-from-scratch/ch09
+INFO: train_size     = 633633
+INFO: iter_per_epoch = 126
+INFO: max_iter       = 25345
+INFO: forward conv1
+INFO: forward conv2
+INFO: forward pooling1
+INFO: forward conv3
+INFO: forward conv4
+Killed
+a@dataaug:~/deep-learning-from-scratch/ch09$ 
+
+結果はkilled。
+
+ミニバッチサイズは1000がちょうど良いようす。ってことは、何らかの方法で実行時間が遅いことの対処を行う必要があるようす。
+
+学習データ量を減らしてしまう。
+それともnumexprを使ってみる？
+
+そもそも、どこで時間がかかっているのか。
+
+試しにtrain_deepnetをプロファイルして、累積時間が10秒以上かかったメソッドは以下。::
+
+  Fri Jan  6 16:38:48 2023    /tmp/res
+  
+           2829850 function calls (2771234 primitive calls) in 332.392 seconds
+  
+     Ordered by: cumulative time
+  
+     ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+     3739/1    0.020    0.000  332.400  332.400 {built-in method builtins.exec}
+          1    0.000    0.000  332.400  332.400 train_deepnet.py:2(<module>)
+          1    0.000    0.000  328.051  328.051 /home/a/deep-learning-from-scratch/ch09/../common/trainer.py:73(train)
+          3    0.011    0.004  328.051  109.350 /home/a/deep-learning-from-scratch/ch09/../common/trainer.py:43(train_step)
+         26    0.028    0.001  277.501   10.673 /home/a/deep-learning-from-scratch/ch09/deep_convnet.py:75(predict)
+        332    0.021    0.000  271.690    0.818 /home/a/deep-learning-from-scratch/ch09/../common/layers.py:11(wrapper)
+        152    2.916    0.019  257.210    1.692 /home/a/deep-learning-from-scratch/ch09/../common/layers.py:239(forward)
+        227   26.014    0.115  217.489    0.958 /home/a/deep-learning-from-scratch/ch09/../common/util.py:39(im2col)
+          6    0.000    0.000  208.536   34.756 /home/a/deep-learning-from-scratch/ch09/deep_convnet.py:83(loss)
+        848  189.705    0.224  189.705    0.224 {method 'reshape' of 'numpy.ndarray' objects}
+          3    0.235    0.078  160.022   53.341 /home/a/deep-learning-from-scratch/ch09/deep_convnet.py:101(gradient)
+   1973/978   62.672    0.032   73.941    0.076 {built-in method numpy.core._multiarray_umath.implement_array_function}
+          2    0.000    0.000   69.148   34.574 /home/a/deep-learning-from-scratch/ch09/deep_convnet.py:87(accuracy)
+        249    0.001    0.000   62.669    0.252 <__array_function__ internals>:177(dot)
+         18    0.001    0.000   45.331    2.518 /home/a/deep-learning-from-scratch/ch09/../common/layers.py:258(backward)
+         27   26.657    0.987   26.658    0.987 /home/a/deep-learning-from-scratch/ch09/../common/util.py:71(col2im)
+         75    0.021    0.000   14.072    0.188 /home/a/deep-learning-from-scratch/ch09/../common/layers.py:283(forward)
+
+reshapeとdotが時間かかっている。built-in method numpy.core._multiarray_umath.implement_array_functionとcol2imもなかなか。
+reshapeとdotをnumexprで高速化すると効果的なんかなぁ。
+
+ちなみにgrepしてみると以下。骨が折れそうだぜ、、、::
+
+
+  a@dataaug:~/deep-learning-from-scratch/common$ grep -rn reshape *
+  functions.py:42:        t = t.reshape(1, t.size)
+  functions.py:43:        y = y.reshape(1, y.size)
+  layers.py:70:        x = x.reshape(x.shape[0], -1)
+  layers.py:84:        dx = dx.reshape(*self.original_x_shape)  # 入力データの形状に戻す（テンソル対応）
+  layers.py:163:            x = x.reshape(N, -1)
+  layers.py:167:        return out.reshape(*self.input_shape)
+  layers.py:198:            dout = dout.reshape(N, -1)
+  layers.py:202:        dx = dx.reshape(*self.input_shape)
+  layers.py:247:        col_W = self.W.reshape(FN, -1).T
+  layers.py:250:        out = out.reshape(N, out_h, out_w, -1).transpose(0, 3, 1, 2)
+  layers.py:260:        dout = dout.transpose(0,2,3,1).reshape(-1, FN)
+  layers.py:264:        self.dW = self.dW.transpose(1, 0).reshape(FN, C, FH, FW)
+  layers.py:290:        col = col.reshape(-1, self.pool_h*self.pool_w)
+  layers.py:294:        out = out.reshape(N, out_h, out_w, C).transpose(0, 3, 1, 2)
+  layers.py:307:        dmax = dmax.reshape(dout.shape + (pool_size,)) 
+  layers.py:309:        dcol = dmax.reshape(dmax.shape[0] * dmax.shape[1] * dmax.shape[2], -1)
+  Binary file __pycache__/util.cpython-38.pyc matches
+  Binary file __pycache__/functions.cpython-38.pyc matches
+  Binary file __pycache__/layers.cpython-38.pyc matches
+  util.py:67:    col = col.transpose(0, 4, 5, 1, 2, 3).reshape(N*out_h*out_w, -1)
+  util.py:90:    col = col.reshape(N, out_h, out_w, C, filter_h, filter_w).transpose(0, 3, 4, 5, 1, 2)
+  a@dataaug:~/deep-learning-from-scratch/common$ grep -rn dot *
+  layers.py:75:        out = np.dot(self.x, self.W) + self.b
+  layers.py:80:        dx = np.dot(dout, self.W.T)
+  layers.py:81:        self.dW = np.dot(self.x.T, dout)
+  layers.py:249:        out = np.dot(col, col_W) + self.b
+  layers.py:263:        self.dW = np.dot(self.col.T, dout)
+  layers.py:266:        dcol = np.dot(dout, self.col_W.T)
+  Binary file __pycache__/layers.cpython-38.pyc matches
+  a@dataaug:~/deep-learning-from-scratch/common$ 
+
+ただし、CPUを増やすと、結構マルチＣＰＵは効果的に使っている様子で、多少の高速化は見られるが、、、
+
+学習１回に(train_step)に35秒かかるから、、、iteration終わるにはなんと51日！
+
+miyakz@lily:~$ ruby -e "puts (126726*35)/3600/24"
+51
+miyakz@lily:~$ 
+
+こりゃいかん。多分、どこかでサチるので、ctl-cを受け入れて、そしたら、
+ループを抜けてセーブして終わるみたいな処理を加えたいなぁ。ってことでくわえた。
+
+2023/1/7 3:00現在、結局モデル1のmini_batch_sizeの1000に戻して学習中。
+とりあえず、30secに1回train_stepがおわるってことで、しばらく放置(10時間くらい?)すると、
+1020回位はtrain_stepまわるんで、これで良いでしょう。
+あとは、テストデータ全体に対して、accを計算するコードを作って、（この実行が1時間位かかるが）、
+結果を少し見てみる。
+
+あとは、numexprを活用した高速化にチャレンジするかどうかだなぁ。
+
+そもそもiteration回してlossが下がるかって(6.9から)話もあるしな。
+
+  
+    
+  
+
+
+
+
+
+高速化
+
+https://qiita.com/d-ogawa/items/1ef88faa7206bdb5bf11
+
+numexprというのが良いらしい。
+
+https://sgryjp.gitlab.io/posts/2020/2020-09-20/
+
+a@dataaug:~$ python3  /tmp/aaa.py
+1.23.4
+Traceback (most recent call last):
+  File "/tmp/aaa.py", line 4, in <module>
+    print(np.__config__.blas_opt_info['libraries'])
+AttributeError: module 'numpy.__config__' has no attribute 'blas_opt_info'
+a@dataaug:~$ 
+
+
+
+a@dataaug:~$ pip install threadpoolctl
+Collecting threadpoolctl
+  Downloading threadpoolctl-3.1.0-py3-none-any.whl (14 kB)
+Installing collected packages: threadpoolctl
+Successfully installed threadpoolctl-3.1.0
+a@dataaug:~$ python3  /tmp/aaa.py
+1.23.4
+[{'user_api': 'blas',
+  'internal_api': 'openblas',
+  'prefix': 'libopenblas',
+  'filepath': '/home/a/.local/lib/python3.8/site-packages/numpy.libs/libopenblas64_p-r0-742d56dc.3.20.so',
+  'version': '0.3.20',
+  'threading_layer': 'pthreads',
+  'architecture': 'Zen',
+  'num_threads': 16}]
+a@dataaug:~$ 
+
+スレッド数はすでに目一杯で動いているようす。
+
+a@dataaug:~/deep-learning-from-scratch/ch09$ python3 t_test.py 
+1.23.4
+[{'user_api': 'blas',
+  'internal_api': 'openblas',
+  'prefix': 'libopenblas',
+  'filepath': '/home/a/.local/lib/python3.8/site-packages/numpy.libs/libopenblas64_p-r0-742d56dc.3.20.so',
+  'version': '0.3.20',
+  'threading_layer': 'pthreads',
+  'architecture': 'Zen',
+  'num_threads': 16}]
+a@dataaug:~/deep-learning-from-scratch/ch09$ cat t_test.py 
+import os
+os.environ["OPENBLAS_NUM_THREADS"] = "16"
+
+from threadpoolctl import threadpool_info
+import numpy as np
+from pprint import pp
+print(np.__version__)
+#print(np.__config__.blas_opt_info['libraries'])
+
+pp(threadpool_info())
+a@dataaug:~/deep-learning-from-scratch/ch09$ ls^C
+a@dataaug:~/deep-learning-from-scratch/ch09$ vim t_test.py 
+a@dataaug:~/deep-learning-from-scratch/ch09$ cat t_test.py 
+import os
+os.environ["OPENBLAS_NUM_THREADS"] = "32"
+
+from threadpoolctl import threadpool_info
+import numpy as np
+from pprint import pp
+print(np.__version__)
+#print(np.__config__.blas_opt_info['libraries'])
+
+pp(threadpool_info())
+a@dataaug:~/deep-learning-from-scratch/ch09$ python3 t_test.py 
+1.23.4
+[{'user_api': 'blas',
+  'internal_api': 'openblas',
+  'prefix': 'libopenblas',
+  'filepath': '/home/a/.local/lib/python3.8/site-packages/numpy.libs/libopenblas64_p-r0-742d56dc.3.20.so',
+  'version': '0.3.20',
+  'threading_layer': 'pthreads',
+  'architecture': 'Zen',
+  'num_threads': 16}]
+a@dataaug:~/deep-learning-from-scratch/ch09$ 
+
+
+  
