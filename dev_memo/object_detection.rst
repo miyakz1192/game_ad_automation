@@ -792,97 +792,154 @@ miyakz@lily:~$
 あとは、numexprを活用した高速化にチャレンジするかどうかだなぁ。
 
 そもそもiteration回してlossが下がるかって(6.9から)話もあるしな。
+最終的な結果は以下の通り。
 
+
+モデルのデフォルト::
+
+    def __init__(self, input_dim=(1, 28, 28),
+                 conv_param_1 = {'filter_num':16, 'filter_size':3, 'pad':1, 'stride':1},
+                 conv_param_2 = {'filter_num':16, 'filter_size':3, 'pad':1, 'stride':1},
+                 conv_param_3 = {'filter_num':32, 'filter_size':3, 'pad':1, 'stride':1},
+                 conv_param_4 = {'filter_num':32, 'filter_size':3, 'pad':2, 'stride':1},
+                 conv_param_5 = {'filter_num':64, 'filter_size':3, 'pad':1, 'stride':1},
+                 conv_param_6 = {'filter_num':64, 'filter_size':3, 'pad':1, 'stride':1},
+                 hidden_size=50, output_size=10):
+
+訓練時のパラメータ::
+
+  network = DeepConvNet(input_dim=(3,64,64),output_size=1001) #ja_chars and closew 
+  trainer = Trainer(network, x_train, t_train, x_test, t_test,
+                    epochs=200, mini_batch_size=1000,
+                    optimizer='Adam', optimizer_param={'lr':0.001},
+                    evaluate_sample_num_per_epoch=1000)
+
+訓練結果::
+
+  a@dataaug:~/deep-learning-from-scratch/ch09$ tail mylog/20230108.log 
+  INFO: forward poolong3
+  INFO: forward affine1
+  INFO: forward dropout1
+  INFO: forward affine2
+  INFO: forward dropout2
+  INFO: forward softmax
+  epoch=0, iter=684/126726, iter_per_epoch=633, elasped_time=45 train loss:6.908204004693683
+  stop flag = True
+  stop flag = True, break
+  Saved Network Parameters!
+  a@dataaug:~/deep-learning-from-scratch/ch09$ 
+
+3 iteration目から6.9にlossが下がった後、サチったので、強制終了。
+test評価時のパラメータ::
+
+  network = DeepConvNet(input_dim=(3,64,64),output_size=1001) #ja_chars and closew 
+  print("INFO: load params")
+  network.load_params(file_name="deep_convnet_params.pkl")
   
-    
+  print("INFO: start acc")
+  test_acc = network.accuracy(x_test, t_test, batch_size=1000)
+
+test評価結果::
   
+  INFO: forward dropout2
+  =============== Test Accuracy ===============
+  test acc:0.000999000999000999
+  a@dataaug:~/deep-learning-from-scratch/ch09$ 
 
+非常に悪い結果となった！
+考察
 
+10分類だと90%以上の高精度のCONVNETだが、今回は、1001分類。さらに画素数も28 x 28から64 x 64に拡大。さらに、train画像が60万、テスト画像が10万。データも多いし、層やパラメータをもっと増やすべきだが、学習時間がかかりすぎてそれができない。こういった制約があり、精度が悪いモデルになってしまった。
 
+この結果を受けて、resnetを使用してみる。これで改善できるかどうか！
 
+ネタ
+=====
 
-高速化
+高速化::
 
-https://qiita.com/d-ogawa/items/1ef88faa7206bdb5bf11
+  https://qiita.com/d-ogawa/items/1ef88faa7206bdb5bf11
 
-numexprというのが良いらしい。
+numexprというのが良いらしい。::
 
-https://sgryjp.gitlab.io/posts/2020/2020-09-20/
+  https://sgryjp.gitlab.io/posts/2020/2020-09-20/
 
-a@dataaug:~$ python3  /tmp/aaa.py
-1.23.4
-Traceback (most recent call last):
-  File "/tmp/aaa.py", line 4, in <module>
-    print(np.__config__.blas_opt_info['libraries'])
-AttributeError: module 'numpy.__config__' has no attribute 'blas_opt_info'
-a@dataaug:~$ 
+以下メモ::
 
-
-
-a@dataaug:~$ pip install threadpoolctl
-Collecting threadpoolctl
-  Downloading threadpoolctl-3.1.0-py3-none-any.whl (14 kB)
-Installing collected packages: threadpoolctl
-Successfully installed threadpoolctl-3.1.0
-a@dataaug:~$ python3  /tmp/aaa.py
-1.23.4
-[{'user_api': 'blas',
-  'internal_api': 'openblas',
-  'prefix': 'libopenblas',
-  'filepath': '/home/a/.local/lib/python3.8/site-packages/numpy.libs/libopenblas64_p-r0-742d56dc.3.20.so',
-  'version': '0.3.20',
-  'threading_layer': 'pthreads',
-  'architecture': 'Zen',
-  'num_threads': 16}]
-a@dataaug:~$ 
-
-スレッド数はすでに目一杯で動いているようす。
-
-a@dataaug:~/deep-learning-from-scratch/ch09$ python3 t_test.py 
-1.23.4
-[{'user_api': 'blas',
-  'internal_api': 'openblas',
-  'prefix': 'libopenblas',
-  'filepath': '/home/a/.local/lib/python3.8/site-packages/numpy.libs/libopenblas64_p-r0-742d56dc.3.20.so',
-  'version': '0.3.20',
-  'threading_layer': 'pthreads',
-  'architecture': 'Zen',
-  'num_threads': 16}]
-a@dataaug:~/deep-learning-from-scratch/ch09$ cat t_test.py 
-import os
-os.environ["OPENBLAS_NUM_THREADS"] = "16"
-
-from threadpoolctl import threadpool_info
-import numpy as np
-from pprint import pp
-print(np.__version__)
-#print(np.__config__.blas_opt_info['libraries'])
-
-pp(threadpool_info())
-a@dataaug:~/deep-learning-from-scratch/ch09$ ls^C
-a@dataaug:~/deep-learning-from-scratch/ch09$ vim t_test.py 
-a@dataaug:~/deep-learning-from-scratch/ch09$ cat t_test.py 
-import os
-os.environ["OPENBLAS_NUM_THREADS"] = "32"
-
-from threadpoolctl import threadpool_info
-import numpy as np
-from pprint import pp
-print(np.__version__)
-#print(np.__config__.blas_opt_info['libraries'])
-
-pp(threadpool_info())
-a@dataaug:~/deep-learning-from-scratch/ch09$ python3 t_test.py 
-1.23.4
-[{'user_api': 'blas',
-  'internal_api': 'openblas',
-  'prefix': 'libopenblas',
-  'filepath': '/home/a/.local/lib/python3.8/site-packages/numpy.libs/libopenblas64_p-r0-742d56dc.3.20.so',
-  'version': '0.3.20',
-  'threading_layer': 'pthreads',
-  'architecture': 'Zen',
-  'num_threads': 16}]
-a@dataaug:~/deep-learning-from-scratch/ch09$ 
+  a@dataaug:~$ python3  /tmp/aaa.py
+  1.23.4
+  Traceback (most recent call last):
+    File "/tmp/aaa.py", line 4, in <module>
+      print(np.__config__.blas_opt_info['libraries'])
+  AttributeError: module 'numpy.__config__' has no attribute 'blas_opt_info'
+  a@dataaug:~$ 
+  
+  
+  
+  a@dataaug:~$ pip install threadpoolctl
+  Collecting threadpoolctl
+    Downloading threadpoolctl-3.1.0-py3-none-any.whl (14 kB)
+  Installing collected packages: threadpoolctl
+  Successfully installed threadpoolctl-3.1.0
+  a@dataaug:~$ python3  /tmp/aaa.py
+  1.23.4
+  [{'user_api': 'blas',
+    'internal_api': 'openblas',
+    'prefix': 'libopenblas',
+    'filepath': '/home/a/.local/lib/python3.8/site-packages/numpy.libs/libopenblas64_p-r0-742d56dc.3.20.so',
+    'version': '0.3.20',
+    'threading_layer': 'pthreads',
+    'architecture': 'Zen',
+    'num_threads': 16}]
+  a@dataaug:~$ 
+  
+  スレッド数はすでに目一杯で動いているようす。
+  
+  a@dataaug:~/deep-learning-from-scratch/ch09$ python3 t_test.py 
+  1.23.4
+  [{'user_api': 'blas',
+    'internal_api': 'openblas',
+    'prefix': 'libopenblas',
+    'filepath': '/home/a/.local/lib/python3.8/site-packages/numpy.libs/libopenblas64_p-r0-742d56dc.3.20.so',
+    'version': '0.3.20',
+    'threading_layer': 'pthreads',
+    'architecture': 'Zen',
+    'num_threads': 16}]
+  a@dataaug:~/deep-learning-from-scratch/ch09$ cat t_test.py 
+  import os
+  os.environ["OPENBLAS_NUM_THREADS"] = "16"
+  
+  from threadpoolctl import threadpool_info
+  import numpy as np
+  from pprint import pp
+  print(np.__version__)
+  #print(np.__config__.blas_opt_info['libraries'])
+  
+  pp(threadpool_info())
+  a@dataaug:~/deep-learning-from-scratch/ch09$ ls^C
+  a@dataaug:~/deep-learning-from-scratch/ch09$ vim t_test.py 
+  a@dataaug:~/deep-learning-from-scratch/ch09$ cat t_test.py 
+  import os
+  os.environ["OPENBLAS_NUM_THREADS"] = "32"
+  
+  from threadpoolctl import threadpool_info
+  import numpy as np
+  from pprint import pp
+  print(np.__version__)
+  #print(np.__config__.blas_opt_info['libraries'])
+  
+  pp(threadpool_info())
+  a@dataaug:~/deep-learning-from-scratch/ch09$ python3 t_test.py 
+  1.23.4
+  [{'user_api': 'blas',
+    'internal_api': 'openblas',
+    'prefix': 'libopenblas',
+    'filepath': '/home/a/.local/lib/python3.8/site-packages/numpy.libs/libopenblas64_p-r0-742d56dc.3.20.so',
+    'version': '0.3.20',
+    'threading_layer': 'pthreads',
+    'architecture': 'Zen',
+    'num_threads': 16}]
+  a@dataaug:~/deep-learning-from-scratch/ch09$ 
 
 
   
