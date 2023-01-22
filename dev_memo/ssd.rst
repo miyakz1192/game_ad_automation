@@ -278,6 +278,53 @@ hit enter file==> imgdata/ru_Screenshot_2022-12-19-10-47-58-33_56bd83b73c18fa95b
 ただし、誤検出が増えると、その分だけResNet34での精査回数が増えることになり、実行効率は悪いので、
 テストデータを元に最適な確信度を自動で探るパラメータ決定プログラムは今後必要だろう。
 
+なお、今現在うまく行っているテストセットは以下。::
+  a@dataaug:~/dl_image_manager$ sha256sum data_set.tar.gz 
+  a8e881be3bfe8d76634e1d13b4664d29c7a963c0c30ecec0720939c9333a56ca  data_set.tar.gz
+  a@dataaug:~/dl_image_manager$ 
+
+その他情報::
+
+  a@pytorch:~/pytorch_ssd$ git remote -v ; git branch ; git log | head
+  origin	https://github.com/miyakz1192/pytorch_ssd.git (fetch)
+  origin	https://github.com/miyakz1192/pytorch_ssd.git (push)
+  * gaa_v1
+    main
+  commit 3d3accd92ab19b32ab21352bfb7be715c4476cd9
+  Author: kazuhiro MIYASHITA <miyakz1192@gmail.com>
+  Date:   Fri Jan 20 14:01:37 2023 +0000
+  
+      GOOD Result obtained!
+  
+  commit c3b6abb2960386fea926174a7a25965e49b1e5b2
+  Author: kazuhiro MIYASHITA <miyakz1192@gmail.com>
+  Date:   Tue Jan 17 16:39:24 2023 +0000
+  
+  a@pytorch:~/pytorch_ssd$ 
+
+まるごとバックアップは以下::
+
+  a@pytorch:~$ ls -l backup/
+  total 676872
+  drwxrwxr-x  3 a a      4096 Dec 14 13:12 old_close_ssd
+  drwxrwxr-x 10 a a      4096 Dec 18 16:42 pytorch_ssd
+  -rw-rw-r--  1 a a 693103475 Jan 20 14:08 pytorch_ssd_good_result_20230120.tar.gz
+  a@pytorch:~$ 
+
+重みは多分これ::
+  
+  a@pytorch:~/pytorch_ssd$ ls -la weights/
+  total 388124
+  drwxrwxr-x  2 a a      4096 Jan 20 14:05 .
+  drwxrwxr-x 15 a a      4096 Jan 22 15:01 ..
+  -rw-rw-r--  1 a a 105165992 Jan 20 12:00 close_weight_1.2027226681531218.pth
+  -rw-rw-r--  1 a a 105164349 Jan 20 12:31 close_weight.pth
+  -rw-rw-r--  1 a a 105151288 Dec 27 16:02 ssd300_mAP_77.43_v2.pth
+  -rwxrwxr-x  1 a a  81938914 Dec 14 13:46 vgg16_reducedfc.pth
+  a@pytorch:~/pytorch_ssd$ sha256sum weights/close_weight_1.2027226681531218.pth 
+  579217773becf8121079affecdf8e3fd065ac3b26ed8e84f9e84f3c83705203e  weights/close_weight_1.2027226681531218.pth
+  a@pytorch:~/pytorch_ssd$ 
+  
 
 おまけ1
 ==========

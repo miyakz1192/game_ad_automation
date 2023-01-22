@@ -1299,5 +1299,106 @@ ResNet34は随分上手く行きそうなので、ここでSSDに戻る。SSDで
 ・ResNet34への学習のため、トレーニング画像を64 x 64にしている(各projectのdaug.py)。SSDになると、400 x 400がインプットになるため、400 x 400の(0,0)を原点としてそこに学習対象の実際の画像を貼り付けてやる必要がある。これはdaug.pyで使われているクラスDataAugmentationGeneratorで行われている処理だった。ResNet34の場合、各projectのdaug.pyでは、DataAugmentationGeneratorのコンストラクタにbase_image_size=(64,64)を指定しているが、SSDでは400,400になる。つまり、学習フレームワークによって画像サイズが変わるため、全体で一括で変更できるようにすると便利だ。この対応を行う必要がある。
 ・細かい話はdl_image_managerで管理する。
 
-  
+トライ6
+==========
 
+SSDで今の所上手く行った訓練データを試しに、ResNet34に流してみて、結果がどうなるかを確認してみる(訓練時間込で確認)。
+結果は以下の通り。::
+
+  a@pytorch:~/resset$ cat /tmp/res
+  test_data/forResNet/10.jpg
+  INFO main
+  dataset size = 101871
+  dataset classses = 1010
+  (1002, 55)
+  test_data/forResNet/1.jpg
+  INFO main
+  dataset size = 101871
+  dataset classses = 1010
+  (1003, 35)
+  test_data/forResNet/2.jpg
+  INFO main
+  dataset size = 101871
+  dataset classses = 1010
+  (1004, 45)
+  test_data/forResNet/3.jpg
+  INFO main
+  dataset size = 101871
+  dataset classses = 1010
+  (1002, 35)
+  test_data/forResNet/4.jpg
+  INFO main
+  dataset size = 101871
+  dataset classses = 1010
+  (1002, 39)
+  test_data/forResNet/5.jpg
+  INFO main
+  dataset size = 101871
+  dataset classses = 1010
+  (1002, 35)
+  test_data/forResNet/6.jpg
+  INFO main
+  dataset size = 101871
+  dataset classses = 1010
+  (1003, 38)
+  test_data/forResNet/7.jpg
+  INFO main
+  dataset size = 101871
+  dataset classses = 1010
+  (1003, 36)
+  test_data/forResNet/8.jpg
+  INFO main
+  dataset size = 101871
+  dataset classses = 1010
+  (1002, 40)
+  test_data/forResNet/9.jpg
+  INFO main
+  dataset size = 101871
+  dataset classses = 1010
+  (1002, 29)
+  a@pytorch:~/resset$ 
+
+close系のラベルは以下::
+  
+  a@pytorch:~/resset$ cat /tmp/l2  | grep close | awk '{print $2}' | sort | uniq
+  1000
+  1001
+  1002
+  1003
+  1004
+  1005
+  1006
+  1007
+  1008
+  1009
+  a@pytorch:~/resset$ 
+
+※  /tmp/l2はpython3 core/resnet34.py labelsの出力結果。
+
+resnetのテスト用に用意した画像はすべてクリアしている。いずれかのcloseに分類されればＯＫ。
+ここで少し疑問に思うのはSSDで好調なデータセットは、400 x 400の画像である。
+ResNet34の入力ではそれが224 x 224にリサイズされる。
+
+実際のclose画像は上記400 x 400の左端上(または右端上)に配置されるために、それを224 x 224にリサイズすると、実際のcloseまで小さくなるはずだ。
+それに対して、test_data/forResNetの画像は100 x 100程度の画像であり、画像サイズいっぱいに実際のclose画像が配置されている。
+それが224 x 224にリサイズされると、224 x 224いっぱいのclose画像になる。なので、実際に学習したclose画像とtest_data/forResNetの画像のサイズが
+かなり異なる(大小差がある）ということになる。にもかかわらず、認識精度が良かった(100%)のはなぜなのだろう。
+
+ここではやはり少し心配なので、SSDで上手く行ったテスト画像データ(close5種)::
+
+  projects/close:
+  projects/closebcow:
+  projects/closegb:
+  projects/closewcobfat:
+  projects/closewcolg:
+
+を利用するが、画像サイズだけが異なる(master/image.jpを400 x 400固定にするのではなく、画像サイズそのものにする)訓練データを用意。それでresnet34を学習させてみる。そのために、dl_image_managerのソースを少々変更する必要がある。
+
+この後、学習させてみて、試してみることにする。
+
+2023/1/23 00:58学習開始。
+
+なお、ResNet34のテストデータとして、ゲーム画像をSSDで検出させた後、検出部分を画像として保存したものを使ってみる。
+以下に画像が一旦吐き出されているので、それを真のcloseかそうでないかで区別する(数百個あるので、手間がかかる。。。)
+
+/home/a/pytorch_ssd/image_log
