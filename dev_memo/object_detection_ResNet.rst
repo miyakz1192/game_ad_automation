@@ -1415,6 +1415,196 @@ ResNet34の入力ではそれが224 x 224にリサイズされる。
 ただし、closeでないものについては、誤ってcloseと認識してしまうものが多数。これは一体どういうことか？？？？？？？？？
 続きは明日以降考えることにする。。。。。
 
+結果は以下の通り。
+まず全体母数は以下の通り。非closeの画像は1281個存在する。::
+
+  a@pytorch:~/resset$ less exp/res_dataset_20230125_not_close.txt | grep "(" | wc
+     1281    2562   12729
+
+1281画像のうち、ResNet34が分類した総クラス数は134::
+
+  a@pytorch:~/resset$ less exp/res_dataset_20230125_not_close.txt | grep "(" | awk -F , '{print $1}'  | sort | uniq -c  | wc
+      132     264    1717
+  a@pytorch:~/resset$ 
+
+そして、上位を抜き出すと以下。::
+
+  a@pytorch:~/resset$ less exp/res_dataset_20230125_not_close.txt | grep "(" | awk -F , '{print $1}'  | sort | uniq -c  | head -20
+      211 (1000
+       13 (1001
+      663 (1002
+       29 (1003
+       65 (1004
+       52 (1005
+        4 (1006
+        1 (1007
+        5 (1008
+        1 (101
+        2 (102
+        2 (109
+        1 (120
+        1 (124
+        1 (129
+        2 (14
+        1 (142
+        2 (151
+        1 (152
+        2 (156
+  a@pytorch:~/resset$ 
+
+非closeの画像をcloseと誤認識しており、誤認識率は以下の通り。::
+  
+  miyakz@lily:~/github_repos/game_ad_automation/dev_memo$ ruby -e "puts 211+13+663+29+65+52+4+1+5"
+  1043
+  miyakz@lily:~/github_repos/game_ad_automation/dev_memo$ ruby -e "puts 1043/1281.0"
+  0.8142076502732241
+  miyakz@lily:~/github_repos/game_ad_automation/dev_memo$ 
+
+と、まぁ、81%の誤認識率となった。言い換えると正答率19%。。。。なんと低い結果になった。
+
+トライ6の考察
+=================
+
+以下に気づいた
+
+1) ResNet34のlearn/predictの時に画像に対する事前処理がpytorchの本家ページに記載している通りになっていない。このため、その部分を修正する必要がある。(SingleDataImageLoaderとGAADataSetの両方であることをわすれずに)
+
+2) 推論結果を得る際にsoftmaxをかましていない。こっちはすぐに修正できるか。→　修正済み
+
+3) 推論の前処理としてエッジフィルターしたらSSDのように正答率よくなる？？
+
+
+1) の詳細
+-----------
+
+現状は以下の通りになっている。::
+
+        self.transform = transforms.Compose([transforms.Resize((224, 224)), transforms.ToTensor()])
+
+しかし、本家では以下の通り。
+
+https://pytorch.org/vision/main/models/generated/torchvision.models.resnet34.html
+
+なんかいろいろと書いてるぞ。::
+
+  The inference transforms are available at ResNet34_Weights.IMAGENET1K_V1.transforms and perform the following preprocessing operations: Accepts PIL.Image, batched (B, C, H, W) and single (C, H, W) image torch.Tensor objects. The images are resized to resize_size=[256] using interpolation=InterpolationMode.BILINEAR, followed by a central crop of crop_size=[224]. Finally the values are first rescaled to [0.0, 1.0] and then normalized using mean=[0.485, 0.456, 0.406] and std=[0.229, 0.224, 0.225].
+
+こちらも参考になる。
+
+https://pystyle.info/pytorch-how-to-use-pretrained-model/
+
+こんな感じ。::
+
+  ImageNet の学習済みモデルで推論を行う際は以下の前処理が必要となります。
+  
+  (256, 256) にリサイズする
+  画像の中心に合わせて、(224, 224) で切り抜く
+  RGB チャンネルごとに平均 (0.485, 0.456, 0.406)、分散 (0.229, 0.224, 0.225) で標準化する
+  これらの処理を行う Transforms を作成します。
+
+コードはこんな感じ。::
+
+  transform = transforms.Compose(
+      [
+          transforms.Resize(256),  # (256, 256) で切り抜く。
+          transforms.CenterCrop(224),  # 画像の中心に合わせて、(224, 224) で切り抜く
+          transforms.ToTensor(),  # テンソルにする。
+          transforms.Normalize(
+              mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
+          ),  # 標準化する。
+      ]
+  )
+
+こっちは本家(resnet18だが)
+
+https://pytorch.org/hub/pytorch_vision_resnet/
+
+コードの一部分::
+
+  # sample execution (requires torchvision)
+  from PIL import Image
+  from torchvision import transforms
+  input_image = Image.open(filename)
+  preprocess = transforms.Compose([
+      transforms.Resize(256),
+      transforms.CenterCrop(224),
+      transforms.ToTensor(),
+      transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+  ])
+  input_tensor = preprocess(input_image)
+  input_batch = input_tensor.unsqueeze(0) # create a mini-batch as expected by the model
+
+これ、多分学習の際にも同じなんだろうな。
+
+https://pytorch.org/tutorials/beginner/transfer_learning_tutorial.html
+
+コードは以下。::
+
+  data_transforms = {
+      'train': transforms.Compose([
+          transforms.RandomResizedCrop(224),
+          transforms.RandomHorizontalFlip(),
+          transforms.ToTensor(),
+          transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+      ]),
+      'val': transforms.Compose([
+          transforms.Resize(256),
+          transforms.CenterCrop(224),
+          transforms.ToTensor(),
+          transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+      ]),
+  }
+
+trainの時ランダムな加工をしているようだが、これはdata augmentationの一環なんだろうか。
+
+https://pystyle.info/pytorch-list-of-transforms/
+
+上のＵＲＬのを見ると多分そう。自分の場合はtrainデータ自体をdata augmentationしたものなので、Randomは必要ない。
+transformsはtrain/valで共通にできそうだ。
+
+
+2)の詳細
+-------------
+
+現状では。::
+
+    def single_predict(self,file_name):
+        im = SingleDataImageLoader()
+        data = im.load(file_name)
+        with torch.no_grad():
+            data = data.to(self.device)
+            output = self.model(data)
+
+        max_idx = int(output[0].argmax())
+        score   = int(output[0][max_idx])
+        return max_idx, score
+
+
+本家では、::
+
+  with torch.no_grad():
+      output = model(input_batch)
+  # Tensor of shape 1000, with confidence scores over Imagenet's 1000 classes
+  print(output[0])
+  # The output has unnormalized scores. To get probabilities, you can run a softmax on it.
+  probabilities = torch.nn.functional.softmax(output[0], dim=0)
+  print(probabilities)
+
+んー。現状のこれではちゃんとした値がとれんのでは・・・？少なくとも評価がこまるぜ。
+
+トライ7の計画と実行
+=========================
+
+1) ResNet34のlearn/predictの時に画像に対する事前処理がpytorchの本家ページに記載している通りになっていない。このため、その部分を修正する必要がある。(SingleDataImageLoaderとGAADataSetの両方であることをわすれずに)
+
+2) 推論結果を得る際にsoftmaxをかましていない。こっちはすぐに修正できるか。
+
+3) 推論の前処理としてエッジフィルターしたらSSDのように正答率よくなる？？
+
+
+2)については修正済み。1)はtransformを修正して、学習を実行開始(2023/01/26~)。3)については学習の結果と確認が済んでからやってみる。
+SSDで上手く行った手法なので、試したいが、まずは1)が先だ。
+
 
 おまけ1(画像の仕分け用のプログラム)
 ==========================================
