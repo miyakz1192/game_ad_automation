@@ -999,7 +999,18 @@ pytorchサービスはこれとは別のサーバに配備されている(pytorc
 
 しかし、これはプログラミングの工夫により克服できたため、No2の方法をそのまま採用
 
+2023/01/28
+-----------
 
+SSD/ResNet34で好成績が出たので、これをGAAに組み込む。
+今、closeの場所の検出のため、GAAからはpytorch(SSD)を呼び出している。
+インタフェースとしてはscpで画像をpytorch(SSD)側に送付して、pytorch(SSD)を動作させ、結果のDetectionResultContainerをダウンロードする。
+GAAでDetectionResultContainerを解析する。
+インタフェースはDetectionResultContainerなので、これを変更しなければ基本的に問題ない。
+
+このため、GAA側を変えずにpytorch側を変更する。
+基本的には、GameEyeというコンポーネントを新たに作成して、そこが、SSDとResNet34を動作させ、結果となるDetectionResultContainerを吐き出す。
+GAA側は起動するファイル名の変更のみ。
 
 2022/12/16~17
 -------------
