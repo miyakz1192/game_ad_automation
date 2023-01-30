@@ -168,10 +168,10 @@ class ScrcpyService(Service):
 
 
 class PytorchService(Service):
-    REMOTE_RESULT_JPG_FILE_PATH = "~/pytorch_ssd/result.jpg"
+    REMOTE_RESULT_JPG_FILE_PATH = "~/game_eye/result.jpg"
     LOCAL_RESULT_JPG_FILE_PATH = "./data/result.jpg"
-    REMOTE_PICKLE_FILE_PATH = "~/pytorch_ssd/result_data.pickle"
-    LOCAL_PICKLE_FILE_PATH = "./data/result_data.pickle"
+    REMOTE_PICKLE_FILE_PATH = "~/game_eye/eye_result_data.pickle"
+    LOCAL_PICKLE_FILE_PATH = "./data/eye_result_data.pickle"
 
     def __init__(self,name):
         super().__init__(name)
@@ -180,7 +180,7 @@ class PytorchService(Service):
         #get pickle result file from pytorch_ssd service to this
         #save result.jpg to debugging
         res = DetectionResultContainer()
-        self.ssh(["cd ~/pytorch_ssd; python3 predict.py %s" % screen_shot_file.file_path])
+        self.ssh(["cd ~/game_eye; ./src/game_eye.py %s" % screen_shot_file.file_path])
         self.scp_download(self.REMOTE_RESULT_JPG_FILE_PATH, self.LOCAL_RESULT_JPG_FILE_PATH)
         self.scp_download(self.REMOTE_PICKLE_FILE_PATH    , self.LOCAL_PICKLE_FILE_PATH)
 
