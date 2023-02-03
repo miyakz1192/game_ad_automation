@@ -947,6 +947,82 @@ D)はまだ良くわからない。とりあえず、自分のスマホ向けに
 改造日記
 ==========
 
+2023/2/3
+---------
+
+フレームワークはとりあえず作ってみて流したが、単体実行のlearn_batch.shが何故かコケる。
+疲れたので、明日調べる。::
+
+  Traceback (most recent call last):
+    File "/home/a/dl_image_manager/projects/ja_char_159/data_augmentation/daug.py", line 6, in <module>
+      from data_aug import *
+    File "/home/a/dl_image_manager/./lib/data_aug.py", line 1, in <module>
+      import keras.utils.image_utils as image
+    File "/home/a/.local/lib/python3.8/site-packages/keras/__init__.py", line 20, in <module>
+      from keras import distribute
+    File "/home/a/.local/lib/python3.8/site-packages/keras/distribute/__init__.py", line 18, in <module>
+      from keras.distribute import sidecar_evaluator
+    File "/home/a/.local/lib/python3.8/site-packages/keras/distribute/sidecar_evaluator.py", line 17, in <module>
+      import tensorflow.compat.v2 as tf
+    File "/home/a/.local/lib/python3.8/site-packages/tensorflow/__init__.py", line 37, in <module>
+      from tensorflow.python.tools import module_util as _module_util
+    File "/home/a/.local/lib/python3.8/site-packages/tensorflow/python/__init__.py", line 45, in <module>
+      from tensorflow.python.feature_column import feature_column_lib as feature_column
+    File "/home/a/.local/lib/python3.8/site-packages/tensorflow/python/feature_column/feature_column_lib.py", line 18, in <module>
+      from tensorflow.python.feature_column.feature_column import *
+    File "/home/a/.local/lib/python3.8/site-packages/tensorflow/python/feature_column/feature_column.py", line 143, in <module>
+      from tensorflow.python.layers import base
+    File "/home/a/.local/lib/python3.8/site-packages/tensorflow/python/layers/base.py", line 16, in <module>
+      from tensorflow.python.keras.legacy_tf_layers import base
+    File "/home/a/.local/lib/python3.8/site-packages/tensorflow/python/keras/__init__.py", line 25, in <module>
+      from tensorflow.python.keras import models
+    File "/home/a/.local/lib/python3.8/site-packages/tensorflow/python/keras/models.py", line 22, in <module>
+      from tensorflow.python.keras.engine import functional
+    File "/home/a/.local/lib/python3.8/site-packages/tensorflow/python/keras/engine/functional.py", line 32, in <module>
+      from tensorflow.python.keras.engine import training as training_lib
+    File "/home/a/.local/lib/python3.8/site-packages/tensorflow/python/keras/engine/training.py", line 44, in <module>
+      from tensorflow.python.keras import callbacks as callbacks_module
+    File "/home/a/.local/lib/python3.8/site-packages/tensorflow/python/keras/callbacks.py", line 68, in <module>
+      import requests
+    File "/usr/lib/python3/dist-packages/requests/__init__.py", line 95, in <module>
+      from urllib3.contrib import pyopenssl
+    File "/usr/lib/python3/dist-packages/urllib3/contrib/pyopenssl.py", line 46, in <module>
+      import OpenSSL.SSL
+    File "/usr/lib/python3/dist-packages/OpenSSL/__init__.py", line 8, in <module>
+      from OpenSSL import crypto, SSL
+    File "/usr/lib/python3/dist-packages/OpenSSL/crypto.py", line 1553, in <module>
+      class X509StoreFlags(object):
+    File "/usr/lib/python3/dist-packages/OpenSSL/crypto.py", line 1573, in X509StoreFlags
+      CB_ISSUER_CHECK = _lib.X509_V_FLAG_CB_ISSUER_CHECK
+  AttributeError: module 'lib' has no attribute 'X509_V_FLAG_CB_ISSUER_CHECK'
+  Error in sys.excepthook:
+
+
+なぜか、エラーが。paramikoをインストールしたせいかな、、、変な所に影響が出ている様子。
+なので、複数サービスは同居しないほうが良いってことか、、、
+しかし、なんだころ。
+
+以下のURLに助けられた。
+
+https://stackoverflow.com/questions/73830524/attributeerror-module-lib-has-no-attribute-x509-v-flag-cb-issuer-check
+
+まず、pip自体が上手く動かなくなったので（謎）再インストール::
+
+  sudo apt remove python3-pip 
+  wget https://bootstrap.pypa.io/get-pip.py
+  sudo python3 get-pip.py
+
+この後、再ログイン。(新しく入れたpipのパスを有効にするため)
+
+して、以下を実行::
+
+  pip install pyopenssl --upgrade
+
+SSDとResnetでconfigファイルの入れ替えが必要などやることは残っているが、とりあえずは動作する様子  
+
+
+
+
 2023/01/31
 -------------
 
@@ -965,6 +1041,9 @@ GameEyeを作って、GAA側に試しに組み込んでテストプレーをし�
 あと、2の改善のために学習データの追加と学習、検証、実機でのテストプレーという一連のワークフローを効率的に回す仕組みが無いとやってられん。
 SSDとResNet34で学習データと、テスト結果、重みの組を管理する仕組みが必要。
 まずはそこだろうか。あとは、このワークフローが完成してNo2の改善がイマイチとなると、一回、深層学習の基本に戻って調査し直すしかあるまい。
+
+このワークフロー議論は以下のレポジトリで作業する。
+https://github.com/miyakz1192/dl_image_manager
 
 2023/01/28
 -----------
