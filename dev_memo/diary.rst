@@ -5,6 +5,15 @@ GAA改造日記
 全体的な人気をすべてこちらに集約することにする。
 すでにバラけたものを集約すること無く、新しい情報からこちらに集約する。
 
+
+2023/2/6
+============
+
+depoy.pyにて、SSDとResNet34の各々において、data_set.tar.gzを展開する処理を忘れていたので、追加してみたいとおもう。
+→　完了
+
+
+
 2023/2/5
 ==========
 
@@ -110,6 +119,8 @@ dl_image_managerのbuildrcを読み込み、ssd/resnet34のサーバ(pytorch)に
 1. SSDの場合、ssd.tar.gzからタイムスタンプが最新のweightを抜き出して、それをpytorch_ssdサーバの/home/a/pytorch_ssdに配置する(weight/best_weight.pth)
 
 2. ResNet34の場合も同様に実施する(resset34.tar.gz)
+
+→　　完成
 
 memo(debug用):
 
