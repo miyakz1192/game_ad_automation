@@ -107,6 +107,26 @@ class ScreenShotImage():
         right_upper = self.image[0:height,xmax-width:xmax]
         return ScreenShotImage(right_upper)
 
+    #start_pos = (x,y) #tuple
+    #size = (w,h) #tuple
+    def extract(self, start_pos, size):
+        ymax = self.image.shape[0]
+        xmax = self.image.shape[1]
+        x = start_pos[0]
+        y = start_pos[1]
+        w = size[0]
+        h = size[1]
+
+        if x + w > xmax:
+            w = xmax - x
+
+        if y + h > ymax:
+            h = ymax - y
+
+        temp = self.image[y:h,x:w]
+
+        return ScreenShotImage(temp)
+
 class Mp4Information:
     def __init__(self, file_name):
         self.file_name = file_name
@@ -152,6 +172,7 @@ class ScrcpyService(Service):
         print("TRACE: touch position")
 
         if pos is None:
+            print("INFO: touch_position called with None. may be touch position will be not found")
             return
 
         print("TRACE: touch position=%d,%d" % (pos.rect.x, pos.rect.y))
@@ -177,6 +198,7 @@ class PytorchService(Service):
 
     def __init__(self,name):
         super().__init__(name)
+        self.cyclic_ad_button_pusher = CyclicAdButtonPusher()
 
     def call_predictor(self, screen_shot_file):
         #get pickle result file from pytorch_ssd service to this
@@ -189,7 +211,7 @@ class PytorchService(Service):
         res.load(self.LOCAL_PICKLE_FILE_PATH)
         return res
 
-    def debug_result_show(self, screen_shot_image, res):
+    def debug_result_show(self, screen_shot_image, res, file_name="./debug_result_show.jpg"):
         plt.figure(figsize=(8,8))
         rgb_image = array_to_img(screen_shot_image.image,scale=False)
         color = plt.cm.hsv(np.linspace(0, 1, 21)).tolist()[0]
@@ -202,9 +224,10 @@ class PytorchService(Service):
             currentAxis.text(i.rect.x, i.rect.y, display_txt, bbox={'facecolor':color, 'alpha':0.5})
 
 
-        plt.savefig("./debug_result_show.jpg")
+        #plt.savefig("./debug_result_show.jpg")
+        plt.savefig(file_name)
         print("[DEBUG] wait for input")
-        #input()
+        input()
 
     def get_close_position(self, screen_shot_file):
         print("[DEBUG] get_close_position")
@@ -256,6 +279,57 @@ class PytorchService(Service):
 
         return None
 
+class CyclicAdButtonPusher:
+    def __init__(self):
+        self.counter = 0
+        self.virtical_stride = 1
+        #window_size = (w,h)
+        self.window_size = (400, 400)
+        #FIXME(start_pos): if phone display resolution changed , this code would not work
+        #start_pos = (x,y)
+        self.start_pos = (600, 700) 
+
+    def __get_next_pos(self, screen_shot_image):
+        ymax = screen_shot_image.image.shape[0]
+        
+        pos_y = self.counter * self.virtical_stride * self.window_size[1] + self.start_pos[1]
+        if pos_y > ymax:
+            #recalc pos_y
+            self.counter = 0
+            return self.__get_next_pos(screen_shot)
+
+        return (pos_x, pos_y)
+
+
+    #TODO: now implemantaion only support "virtical"
+    def push(self, screen_shot_file, direction="virtical"):
+        print("INFO: push Ad Button start")
+        screen_shot_image = screen_shot_file.load()
+        pos = self.__get_next_pos(screen_shot_image)
+        adbutton_img = screen_shot.extract(pos, self.window_size)
+        adbutton_f = ScreenShotFile("/tmp/adbutton.jpg")
+        adbutton_f.associate_image(adbutton_img)
+        adbutton_f.save()
+        file_path = adbutton_f.file_path
+        self.scp_upload(file_path, file_path)
+        res = DetectionResultContainer()
+        res_adbutton = self.call_predictor(adbutton_f)
+        #TODO: Coordinate Syetem Needed!!!!!! tommorow coding...
+        res.sort_by_score()
+        res.print()
+
+        self.debug_result_show(screen_shot_image, res, file_name="./adbutton_debug_res.jpg")
+
+        #FIXME: to be DRY(Do not Repeat Yourlelf)
+        button_res = None
+        if len(res.res) > 0:
+            temp = list(filter(lambda x: x.label == "adbutton", res.res))
+            if len(temp) > 0:
+                button_res =  temp[0]
+                print("INFO: Ad Button info ==> %s" % (button_res.to_s())
+        print("INFO: push Ad Button end")
+        return button_res
+
 
 class GameAdAutomation():
 
@@ -269,13 +343,12 @@ class GameAdAutomation():
         print("INFO: naive_algo")
         while True:
             screen_shot = self.scrcpy_s.get_screen_shot()
+            pos = self.pytorch_s.cyclic_ad_button_pusher.push(screen_shot)
+            self.scrcpy_s.touch_position(pos)
             pos = self.pytorch_s.get_close_position(screen_shot)
-            if pos is not None:
-                self.scrcpy_s.touch_position(pos)
-            else:
-                print("INFO: no position found")
-            print("INFO: sleep 10")
-            time.sleep(10)
+            self.scrcpy_s.touch_position(pos)
+            #print("INFO: sleep 10")
+            #time.sleep(10)
 
 
 def main():
