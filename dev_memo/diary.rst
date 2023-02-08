@@ -5,6 +5,66 @@ GAA改造日記
 全体的な人気をすべてこちらに集約することにする。
 すでにバラけたものを集約すること無く、新しい情報からこちらに集約する。
 
+2023/2/8
+==========
+
+2/7の記録を受けて、作業を実施。
+まず、create_taskは正常に終わっていた。
+deployもいい感じで終了した。::
+
+  a@dataaug:~/gaa_learning_task$ ./deploy.py  test_run_20230208
+  INFO: trying deploying about ssd
+  INFO: extracting best weight file from ./output/test_run_20230208/ssd.tar.gz
+  INFO: file found, and send it to service
+  INFO: /home/a/pytorch_ssd/weights/best_weight.pth uploaded successfully
+  INFO: extracting data set file from ./output/test_run_20230208/ssd_dl_image_manager.tar.gz
+  INFO: file found, and send it to service
+  INFO: /tmp/data_set.tar.gz uploaded successfully
+  INFO: extract data_set.tar.gz on remote host
+  
+  
+  
+  
+  INFO: done
+  INFO: trying deploying about resnet34
+  INFO: extracting best weight file from ./output/test_run_20230208/resnet34.tar.gz
+  INFO: file found, and send it to service
+  INFO: /home/a/resset/weights/best_weight.pth uploaded successfully
+  INFO: extracting data set file from ./output/test_run_20230208/resnet34_dl_image_manager.tar.gz
+  INFO: file found, and send it to service
+  INFO: /tmp/data_set.tar.gz uploaded successfully
+  INFO: extract data_set.tar.gz on remote host
+  
+  
+  
+  
+  INFO: done
+  INFO: program ended successfully!
+  a@dataaug:~/gaa_learning_task$ 
+
+GAA本体をテストランしてみる。（相変わらず精度は悪いが）、動作上は問題なし。
+というわけで、本日は以下を実施。
+
+1. 「広告をみる」ボタンをSSD/ResNet34に学習させるcreate_task。ゲーム画像からmaster/image.jpgを作り、annotaionのxmlを作り、create_taskする。
+
+2. 並行して、「広告をみる」ボタンを考慮した対応をGAA本体側に施す。
+
+まずは、1の手順。
+
+1. ゲーム画像を取得して、gimpで「広告をみる」ボタンを切り出す。そのボタンだけが100%ピッタリ入った画像ファイルを作る
+
+2. dl_image_managerでbin/create_project.shを実行してadbuttonプロジェクトを作成する
+
+3. 1の画像を当該プロジェクトのmaster/image.jpgとする。他のプロジェクトを参考にして、annotaion xmlも手動で作成する。画像のw/hは画像のサイズそのもので、originも(1,1)、w/hを画像サイズを考慮したものにする。(この辺自動化してもよいな)
+
+4. ./bin/build_project.py adbuttonしてみてdata augmentationしてみた結果がいい感じか確認する。
+
+5. create_taskを実行する。
+
+※ どうも、ResNet34のepochが5だと精度が悪いっぽいので、10にしてみる。
+
+GAAのAd buttonサポートはプッシュする際の座標変換システムを残してとりあえずコーディングしたので、明日は座標変換システムのコーディングと、create_taskは完了しているだろうから、とりあえずdeployして、今回GAAに追加したコードを動作させてみるの巻。
+
 2023/2/7
 ===========
 
