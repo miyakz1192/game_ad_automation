@@ -21,6 +21,8 @@ import pdb
 
 from matplotlib import pyplot as plt
 
+import re
+
 
 
 #necessary environments values
@@ -202,7 +204,7 @@ class PytorchService(Service):
 
         plt.savefig("./debug_result_show.jpg")
         print("[DEBUG] wait for input")
-        input()
+        #input()
 
     def get_close_position(self, screen_shot_file):
         print("[DEBUG] get_close_position")
@@ -247,7 +249,10 @@ class PytorchService(Service):
         self.debug_result_show(screen_shot_image, res)
 
         if len(res.res) > 0:
-            return res.res[0]
+            for i in res.res:
+                #FIXME: this code is buggy
+                if re.match(r'.*close.*', i.label) is not None:
+                    return i
 
         return None
 
