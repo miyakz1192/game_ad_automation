@@ -12,7 +12,9 @@ import matplotlib.pyplot as plt
 from keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras.utils import array_to_img
 
+import gaa_lib_loader
 from detection_result import *
+from easy_sshscp import *
 
 import torch
 import json
@@ -50,7 +52,7 @@ class Service:
         command = ["sshpass", "-p" , self.passwd(), "ssh", "-o" , "StrictHostKeyChecking=no" , self.user()+"@"+self.host()] + cmd
         print("DEBUG: %s" % " ".join(command))
         res = subprocess.check_output(command)
-        print("DEBUG: %s" % str(res))
+        print("DEBUG: %s" % str(res.decode()))
 
     def scp_upload(self,path_from, path_to): #path_from(local) , path_to(remote)
         # sshpass -p a scp -o StrictHostKeyChecking=no <path_from> <user>@<host>:<path_to>
@@ -123,7 +125,7 @@ class ScreenShotImage():
         if y + h > ymax:
             h = ymax - y
 
-        temp = self.image[y:h,x:w]
+        temp = self.image[y:y+h,x:x+w]
 
         return ScreenShotImage(temp)
 
@@ -198,13 +200,13 @@ class PytorchService(Service):
 
     def __init__(self,name):
         super().__init__(name)
-        self.cyclic_ad_button_pusher = CyclicAdButtonPusher()
+        self.cyclic_ad_button_pusher = CyclicAdButtonPusher(self)
 
-    def call_predictor(self, screen_shot_file):
+    def call_predictor(self, screen_shot_file, algo="all"):
         #get pickle result file from pytorch_ssd service to this
         #save result.jpg to debugging
         res = DetectionResultContainer()
-        self.ssh(["cd ~/game_eye; ./src/game_eye.py %s" % screen_shot_file.file_path])
+        self.ssh(["cd ~/game_eye; ./src/game_eye.py %s --algo %s" % (screen_shot_file.file_path, algo)])
         self.scp_download(self.REMOTE_RESULT_JPG_FILE_PATH, self.LOCAL_RESULT_JPG_FILE_PATH)
         self.scp_download(self.REMOTE_PICKLE_FILE_PATH    , self.LOCAL_PICKLE_FILE_PATH)
 
@@ -217,7 +219,13 @@ class PytorchService(Service):
         color = plt.cm.hsv(np.linspace(0, 1, 21)).tolist()[0]
         plt.imshow(rgb_image)
         currentAxis = plt.gca()
-        for i in res.res:
+
+        if type(res) == list:
+            targets = res
+        else:
+            targets = res.res
+
+        for i in targets:
             display_txt = '%s: %.2f'%(i.label, i.score)
             coords = ((i.rect.x, i.rect.y), i.rect.width, i.rect.height)
             currentAxis.add_patch(plt.Rectangle(*coords, fill=False, edgecolor=color, linewidth=2))
@@ -280,14 +288,15 @@ class PytorchService(Service):
         return None
 
 class CyclicAdButtonPusher:
-    def __init__(self):
+    def __init__(self, pytorch_s):
         self.counter = 0
         self.virtical_stride = 1
         #window_size = (w,h)
-        self.window_size = (400, 400)
+        self.window_size = (264, 200)
         #FIXME(start_pos): if phone display resolution changed , this code would not work
         #start_pos = (x,y)
         self.start_pos = (600, 700) 
+        self.pytorch_s = pytorch_s
 
     def __get_next_pos(self, screen_shot_image):
         ymax = screen_shot_image.image.shape[0]
@@ -298,7 +307,16 @@ class CyclicAdButtonPusher:
             self.counter = 0
             return self.__get_next_pos(screen_shot)
 
+        pos_x = self.start_pos[0]
+
         return (pos_x, pos_y)
+    
+    #det_res is DetectionResult instance
+    def __window_coordinate_system_to_normal(self, det_res):
+        pos_x = self.start_pos[0]
+        pos_y = self.counter * self.virtical_stride * self.window_size[1] + self.start_pos[1]
+        det_res.rect.x += pos_x
+        det_res.rect.y += pos_y
 
 
     #TODO: now implemantaion only support "virtical"
@@ -306,19 +324,19 @@ class CyclicAdButtonPusher:
         print("INFO: push Ad Button start")
         screen_shot_image = screen_shot_file.load()
         pos = self.__get_next_pos(screen_shot_image)
-        adbutton_img = screen_shot.extract(pos, self.window_size)
+        adbutton_img = screen_shot_image.extract(pos, self.window_size)
         adbutton_f = ScreenShotFile("/tmp/adbutton.jpg")
         adbutton_f.associate_image(adbutton_img)
         adbutton_f.save()
         file_path = adbutton_f.file_path
-        self.scp_upload(file_path, file_path)
+
+        ssh = EasySSHSCP()
+        ssh.upload(file_path, "gameeye", file_path)
         res = DetectionResultContainer()
-        res_adbutton = self.call_predictor(adbutton_f)
-        #TODO: Coordinate Syetem Needed!!!!!! tommorow coding...
+        res_adbutton = self.pytorch_s.call_predictor(adbutton_f, algo="ssd")
+        res.merge(res_adbutton)
         res.sort_by_score()
         res.print()
-
-        self.debug_result_show(screen_shot_image, res, file_name="./adbutton_debug_res.jpg")
 
         #FIXME: to be DRY(Do not Repeat Yourlelf)
         button_res = None
@@ -326,7 +344,13 @@ class CyclicAdButtonPusher:
             temp = list(filter(lambda x: x.label == "adbutton", res.res))
             if len(temp) > 0:
                 button_res =  temp[0]
-                print("INFO: Ad Button info ==> %s" % (button_res.to_s())
+                print("INFO: Ad Button info")
+                button_res.print()
+                self.__window_coordinate_system_to_normal(button_res)
+                print("INFO: __window_coordinate_system_to_normal")
+                button_res.print()
+                self.pytorch_s.debug_result_show(screen_shot_image, [button_res], file_name="./adbutton_debug_res.jpg")
+
         print("INFO: push Ad Button end")
         return button_res
 
