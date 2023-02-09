@@ -1,5 +1,11 @@
 #!/usr/bin/env python3
 
+import warnings
+warnings.resetwarnings()
+warnings.simplefilter('ignore')
+
+import cv2
+
 import os
 import time
 import subprocess
@@ -235,7 +241,13 @@ class PytorchService(Service):
         #plt.savefig("./debug_result_show.jpg")
         plt.savefig(file_name)
         print("[DEBUG] wait for input")
-        input()
+
+        img = cv2.imread(file_name)
+        cv2.imshow(file_name , img)
+        cv2.waitKey(0)
+        cv2.destroyWindow(file_name)
+
+        #input()
 
     def get_close_position(self, screen_shot_file):
         print("[DEBUG] get_close_position")
@@ -283,7 +295,8 @@ class PytorchService(Service):
             for i in res.res:
                 #FIXME: this code is buggy
                 if re.match(r'.*close.*', i.label) is not None:
-                    return i
+                    if i.score > 0.7:
+                        return i
 
         return None
 
@@ -306,7 +319,8 @@ class CyclicAdButtonPusher:
             #recalc pos_y
             self.counter = 0
             return self.__get_next_pos(screen_shot)
-
+        
+        self.counter += 1
         pos_x = self.start_pos[0]
 
         return (pos_x, pos_y)
@@ -350,6 +364,9 @@ class CyclicAdButtonPusher:
                 print("INFO: __window_coordinate_system_to_normal")
                 button_res.print()
                 self.pytorch_s.debug_result_show(screen_shot_image, [button_res], file_name="./adbutton_debug_res.jpg")
+                if button_res.score < 0.1:
+                    print("INFO: this ad button ignored due to low score")
+                    button_res = None
 
         print("INFO: push Ad Button end")
         return button_res
@@ -369,8 +386,11 @@ class GameAdAutomation():
             screen_shot = self.scrcpy_s.get_screen_shot()
             pos = self.pytorch_s.cyclic_ad_button_pusher.push(screen_shot)
             self.scrcpy_s.touch_position(pos)
+
+            screen_shot = self.scrcpy_s.get_screen_shot()
             pos = self.pytorch_s.get_close_position(screen_shot)
             self.scrcpy_s.touch_position(pos)
+
             #print("INFO: sleep 10")
             #time.sleep(10)
 
