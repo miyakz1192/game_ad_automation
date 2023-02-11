@@ -19,6 +19,14 @@ gaa
 
 5. GAA側のimage logging。
 
+6. UserWarningがうざくて、ログが埋まる
+
+7. 動作が重い。とにかく重い。
+
+8. closeを認識する場合は、切り出しが400 x 400でなくても良いのではないか。400 x 200でもよいのでは？No3と重複
+
+9. closeの認識精度が悪い(間違って検出、検出しない。など）
+
 SSD
 -----
 
@@ -31,6 +39,8 @@ ResNet34
 
 gaa_learning_task
 -------------------------
+
+  
 
 
 game_eye
@@ -49,13 +59,15 @@ dl_image_manager
 
 1. master/image.jpgからannotation xmlを自動生成する。例えば、master/image.jpgが300 x 100の画像だとすると、annotationの画像サイズを指定するところもそのサイズだし、ピッタリサイズなのでxmin/ymin,xmax/ymaxの自動的に決定されるので。
 
+  
+
+
 実施済みのissue
 ====================
 
 gaa
 -----
 2. closeの認識、利用箇所でラベルがcloseかどうかを気にしていないので、それをフィルタリングするようにする。つまりcloseを識別したいのであれば、*close*の指定を行う。など。　→　雑だけど完了。
-
 
 
 SSD
@@ -84,6 +96,13 @@ gaa_learning_task
 
 2. depoy.pyにて、SSDとResNet34の各々において、data_set.tar.gzを展開する処理を忘れていたので、追加してみたいとおもう。→　完了
 
+1. algo選択サポートOK::
+  commit 37216edd40f8701f904afa05580e0700fc05245d (HEAD -> master, origin/master)
+  Author: kazuhiro MIYASHITA <miyakz1192@gmail.com>
+  Date:   Sat Feb 11 15:25:56 2023 +0000
+  
+      select algo support
+
 game_eye
 -----------------
 
@@ -94,6 +113,16 @@ commit 4205ec5bf3e436ffcd37ea86431db680c50187c9 (HEAD -> master, origin/master)
 
 gaa_lib
 -----------
+
+dl_image_manager
+-------------------
+
+2. resnet34/ssdごとにprojectsの内容を切り替えられるようにする。commonと各アルゴリズム固有のモノを分ける。::
+  commit 2c7a50ded24b6ac237b79098067dced7e06f817d (HEAD -> master, origin/master, origin/HEAD)
+  Author: kazuhiro MIYASHITA <miyakz1192@gmail.com>
+  Date:   Sat Feb 11 15:20:24 2023 +0000
+  
+      support for changing projects each algo
 
 
 
