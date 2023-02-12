@@ -5,6 +5,302 @@ GAA改造日記
 全体的な人気をすべてこちらに集約することにする。
 すでにバラけたものを集約すること無く、新しい情報からこちらに集約する。
 
+2023/02/12
+===========
+
+●　まとめ
+
+1. ResNet34のoutputサイズを小さくしてみる(10程度)→　結果ＮＧ
+
+2. ResNet34のoutputサイズはデフォルト(1000)にして、学習させるものはclose系の10数種　→　結果ＮＧ(No1と同等の結果に。ただし、認識する際の確信度は上がっては居るが、誤認識度は100%になるためツカイモンにならん。)
+
+
+※　outputサイズを10にしたほうが、多少はそれらしい結果になるが、正認識度(正解を正解と判定)が低く、誤認識度(非正解を正解と誤判定)が高く、結果として悪い。ただし、outputサイズが1000で学習物10だと、正認識度は100%近くなるが、誤認識度も100%となり、最悪(すべての与えた画像をcloseと認識しており、学習していないのと同じ)。
+
+3. 今の所、ja_charも学習させたモデルのほうが精度がまだまし。
+
+
+以下はまだ実施していない
+
+X. close系は1つにまとめて学習
+
+Y. pretrained=Falseにしてみる　→　2023/2/12~13実施中
+
+
+
+●　継続。
+
+データセット数を10にしてトライしてみたが、結果はボロボロ::
+
+  a@dataaug:~/gaa_learning_task/output/resnet_only_20230212$ cat calc_exp_res_close.txt 
+  INFO: gathering class than 0 as 0
+  =====RECORD INFO=====
+  total = 209
+  =====SUM=====
+  0.100000, 0, 209, 100
+  0.200000, 0, 209, 100
+  0.300000, 0, 209, 100
+  0.400000, 0, 207, 99
+  0.500000, 0, 202, 96
+  0.600000, 0, 202, 96
+  0.700000, 0, 181, 86
+  0.800000, 0, 145, 69
+  0.900000, 0, 3, 1
+  =====SUM(INVERT RAITIO)=====
+  0.100000, 0, 209, 0
+  0.200000, 0, 209, 0
+  0.300000, 0, 209, 0
+  0.400000, 0, 207, 0
+  0.500000, 0, 202, 3
+  0.600000, 0, 202, 3
+  0.700000, 0, 181, 13
+  0.800000, 0, 145, 30
+  0.900000, 0, 3, 98
+  a@dataaug:~/gaa_learning_task/output/resnet_only_20230212$ cat calc_exp_res_not_close.txt 
+  INFO: gathering class than 0 as 0
+  =====RECORD INFO=====
+  total = 1281
+  =====SUM=====
+  0.100000, 0, 1281, 100
+  0.200000, 0, 1281, 100
+  0.300000, 0, 1281, 100
+  0.400000, 0, 1281, 100
+  0.500000, 0, 1272, 99
+  0.600000, 0, 1256, 98
+  0.700000, 0, 1204, 93
+  0.800000, 0, 1074, 83
+  0.900000, 0, 46, 3
+  =====SUM(INVERT RAITIO)=====
+  0.100000, 0, 1281, 0
+  0.200000, 0, 1281, 0
+  0.300000, 0, 1281, 0
+  0.400000, 0, 1281, 0
+  0.500000, 0, 1272, 0
+  0.600000, 0, 1256, 1
+  0.700000, 0, 1204, 6
+  0.800000, 0, 1074, 16
+  0.900000, 0, 46, 96
+  a@dataaug:~/gaa_learning_task/output/resnet_only_20230212$ 
+
+そもそものtest結果が非常に悪い::
+  
+  INFO main
+  dataset size = 2871
+  dataset classses = 10
+  [2023-02-11 15:32:55.294456] Train Epoch: 0 [0/2009 (0%)]       Average loss: 0.077206
+  ...
+  [2023-02-11 15:48:04.508375] Train Epoch: 9 [1728/2009 (86%)]   Average loss: 0.016987
+  [2023-02-11 15:48:13.331634] Train Epoch: 9 [1920/2009 (96%)]   Average loss: 0.016523
+
+テストは以下。::
+
+  INFO main
+  dataset size = 2871
+  dataset classses = 10
+                precision    recall  f1-score   support
+  
+             0       0.89      1.00      0.94       243
+             1       0.85      0.99      0.91       228
+             2       0.82      0.99      0.90       175
+             3       0.47      0.61      0.54        31
+             4       0.47      0.67      0.55        27
+             5       0.00      0.00      0.00        27
+             6       0.00      0.00      0.00        38
+             7       0.00      0.00      0.00        36
+             8       0.40      0.29      0.33        28
+             9       0.50      0.28      0.36        29
+  
+      accuracy                           0.81       862
+     macro avg       0.44      0.48      0.45       862
+  weighted avg       0.71      0.81      0.75       862
+
+理由が良くわからないな、、、output classesを無理やり10にしたのが悪かったか。
+ja_char込でoutput classesを1000幾つにして実施した時はここまでテストでの精度は悪くなかった。
+実際の学習クラスは10にしておいて、output classesはデフォルトのままにして、再度学習してみる。
+既存の学習済みだと1000位の学習結果になっている、それでcloseの追加学習をしても、それほど強く重みが更新されないと思ったので、
+試しに、epochも10から20に変更してみる。これで変化があるか？
+
+学習チェックのパラメータは以下に気をつける必要がある。が、、クラス数が1000になっているので、上手く計算はしてくれない感じがする。
+チェックツールにインデックスの幅を考慮する必要があり、少々めんどくさい。以下では多分、上手く行かないだろう。この考慮がないと。::
+
+./bin/calc_exp.py --gathering_class_than 0 --gathering_class_as 0 --calc_target 0 check_res_close_edge.log > calc_exp_res_close.txt
+./bin/calc_exp.py --gathering_class_than 0 --gathering_class_as 0 --calc_target 0 check_res_not_close_edge.log > calc_exp_res_not_close.txt
+
+分類クラス数を1000にシテ実施してみた。結果は相変わらずボロボロである。すべてに対してcloseと答えている::
+
+  a@dataaug:~/gaa_learning_task/output/resnet_only_try2_20230212$ cat calc_exp_res_close.txt 
+  INFO: gathering class than 0 as 0
+  =====RECORD INFO=====
+  total = 209
+  =====SUM=====
+  0.100000, 0, 209, 100
+  0.200000, 0, 209, 100
+  0.300000, 0, 209, 100
+  0.400000, 0, 209, 100
+  0.500000, 0, 209, 100
+  0.600000, 0, 209, 100
+  0.700000, 0, 209, 100
+  0.800000, 0, 209, 100
+  0.900000, 0, 209, 100
+  =====SUM(INVERT RAITIO)=====
+  0.100000, 0, 209, 0
+  0.200000, 0, 209, 0
+  0.300000, 0, 209, 0
+  0.400000, 0, 209, 0
+  0.500000, 0, 209, 0
+  0.600000, 0, 209, 0
+  0.700000, 0, 209, 0
+  0.800000, 0, 209, 0
+  0.900000, 0, 209, 0
+  a@dataaug:~/gaa_learning_task/output/resnet_only_try2_20230212$ cat calc_exp_res_not_close.txt 
+  INFO: gathering class than 0 as 0
+  =====RECORD INFO=====
+  total = 1281
+  =====SUM=====
+  0.100000, 0, 1281, 100
+  0.200000, 0, 1281, 100
+  0.300000, 0, 1281, 100
+  0.400000, 0, 1281, 100
+  0.500000, 0, 1280, 99
+  0.600000, 0, 1276, 99
+  0.700000, 0, 1273, 99
+  0.800000, 0, 1267, 98
+  0.900000, 0, 1248, 97
+  =====SUM(INVERT RAITIO)=====
+  0.100000, 0, 1281, 0
+  0.200000, 0, 1281, 0
+  0.300000, 0, 1281, 0
+  0.400000, 0, 1281, 0
+  0.500000, 0, 1280, 0
+  0.600000, 0, 1276, 0
+  0.700000, 0, 1273, 0
+  0.800000, 0, 1267, 1
+  0.900000, 0, 1248, 2
+  a@dataaug:~/gaa_learning_task/output/resnet_only_try2_20230212$ 
+
+クラスとしては、すべてcloseの様子。::
+
+  a@pytorch:~/resset$ grep "(" check_res_close_edge.log  | awk -F "," '{print $1}' | wc
+      209     209     627
+  a@pytorch:~/resset$ grep "(" check_res_close_edge.log  |wc
+      209     418    4991
+  a@pytorch:~/resset$ 
+
+  a@pytorch:~/resset$ tail check_res_close_edge.log
+  test_data/dataset_20230125/close/ja_char_65_0.jpg
+  INFO main
+  dataset size = 2871
+  dataset classses = 10
+  (0, 0.9837756752967834)
+  test_data/dataset_20230125/close/pottedplant_17_0.jpg
+  INFO main
+  dataset size = 2871
+  dataset classses = 10
+  (0, 0.9974935054779053)
+  a@pytorch:~/resset$ 
+
+非closeは以下。::
+
+  a@pytorch:~/resset$ grep "(" check_res_not_close_edge.log  | wc
+     1281    2562   30554
+  a@pytorch:~/resset$ grep "(" check_res_not_close_edge.log  | awk -F "," '{print $1}' | wc
+     1281    1281    3843
+  a@pytorch:~/resset$ tail check_res_not_close_edge.log 
+  test_data/dataset_20230125/not_close/pottedplant_43_0.jpg
+  INFO main
+  dataset size = 2871
+  dataset classses = 10
+  (0, 0.9879393577575684)
+  test_data/dataset_20230125/not_close/pottedplant_45_0.jpg
+  INFO main
+  dataset size = 2871
+  dataset classses = 10
+  (0, 0.9959017634391785)
+  a@pytorch:~/resset$ 
+
+というわけで、与えたすべての画像をclose系と判断してしまっている様子。これでは使い物にならない。
+現状、close系の画像だけを与えて学習させて、close系かそれ以外を判定するのは非常に難しいっぽい。
+
+試しに、pretrained=Falseにしてみたら一体どうなるんだろう。。。::
+
+  a@pytorch:~/resset$ git diff
+  diff --git a/core/resnet34.py b/core/resnet34.py
+  index eab3ff3..b0c931d 100644
+  --- a/core/resnet34.py
+  +++ b/core/resnet34.py
+  @@ -24,9 +24,10 @@ from single import *
+   
+   class GAAResNet34():
+       def __init__(self, output_classes=None, train_ratio=0.7, batch_size=32, epochs=5, verbose=True):
+  -        self.model = resnet34(pretrained=True)
+  +        #self.model = resnet34(pretrained=True)
+  +        self.model = resnet34(pretrained=False)
+           #self.model.fc = nn.Linear(512,35)
+  -        self.model.fc = nn.Linear(512,output_classes)
+  +        #self.model.fc = nn.Linear(512,output_classes)
+           
+           self.device = torch.device("cpu")
+           self.model.cpu()
+  @@ -159,7 +160,7 @@ if __name__ == "__main__":
+   
+       gaa_resnet_34 = GAAResNet34(output_classes=dataset.classes(), verbose=False)
+       if sys.argv[1] == "train":
+  -        gaa_resnet_34.train(dataset,epochs=5)
+  +        gaa_resnet_34.train(dataset,epochs=20)
+           gaa_resnet_34.save("./weights/best_weight.pth")
+       elif sys.argv[1] == "test":
+           gaa_resnet_34.load("./weights/best_weight.pth")
+  a@pytorch:~/resset$ 
+
+やっぱり、output_sizeを10にしたほうが、まだましなので、pretrained=Falseは試しにoutput_size=10の時にして実施してみることに。::
+
+  a@pytorch:~/resset$ git diff 
+  diff --git a/core/resnet34.py b/core/resnet34.py
+  index eab3ff3..a6d3a1f 100644
+  --- a/core/resnet34.py
+  +++ b/core/resnet34.py
+  @@ -24,7 +24,8 @@ from single import *
+   
+   class GAAResNet34():
+       def __init__(self, output_classes=None, train_ratio=0.7, batch_size=32, epochs=5, verbose=True):
+  -        self.model = resnet34(pretrained=True)
+  +        #self.model = resnet34(pretrained=True)
+  +        self.model = resnet34(pretrained=False)
+           #self.model.fc = nn.Linear(512,35)
+           self.model.fc = nn.Linear(512,output_classes)
+           
+  @@ -33,6 +34,7 @@ class GAAResNet34():
+           self.verbose = verbose
+   
+       def train_aux(self,epoch):
+  +        print(self.model)
+           total_loss = 0
+           total_size = 0
+           self.model.train()
+  @@ -159,7 +161,7 @@ if __name__ == "__main__":
+   
+       gaa_resnet_34 = GAAResNet34(output_classes=dataset.classes(), verbose=False)
+       if sys.argv[1] == "train":
+  -        gaa_resnet_34.train(dataset,epochs=5)
+  +        gaa_resnet_34.train(dataset,epochs=20)
+           gaa_resnet_34.save("./weights/best_weight.pth")
+       elif sys.argv[1] == "test":
+           gaa_resnet_34.load("./weights/best_weight.pth")
+  a@pytorch:~/resset$ 
+
+実行::
+
+  a@dataaug:~/gaa_learning_task$ nohup ./create_task.py resnet_only_try3 --algo resnet34 &
+   [1] 19238
+   a@dataaug:~/gaa_learning_task$ nohup: ignoring input and appending output to 'nohup.out'
+   
+   a@dataaug:~/gaa_learning_task$ date
+   Sun 12 Feb 2023 02:50:53 PM UTC
+   a@dataaug:~/gaa_learning_task$ 
+   
+  
+
+
 2023/02/11
 ============
 
@@ -183,6 +479,8 @@ GAA関連でたくさんissueが溜まっているが、本日は以下のissue�
   a@dataaug:~/gaa_learning_task$ 
   この時刻周辺で以下を実行
   nohup ./create_task.py --algo resnet34 resnet_only_20230212 &
+
+※　分類タスク数を10にするということ。
 
 2. close系は１つにまとめてみる
 各projectをbuildした後に、それをまとめてdata_setを作る時の話。例えば、closeとclosewcobfatをcloseとしてまとめてしまうには、
