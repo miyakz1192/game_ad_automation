@@ -150,9 +150,16 @@ class ScreenShotImage():
 
         return count > threshold
 
-class Mp4Information:
+class Mp4File:
     def __init__(self, file_name):
         self.file_name = file_name
+
+    def remove_file(self):
+        if self.exists_file() is True:
+            os.remove(self.file_name)
+
+    def exists_file(self):
+        return os.path.isfile(self.file_name)
 
     def get_duration(self):
         #ffprobe -v quiet -print_format json -show_format -show_streams  -i /tmp/a.mp4
@@ -162,10 +169,11 @@ class Mp4Information:
 
     def get_last_sec(self):
         return int(self.get_duration())
-    
+
 class ScrcpyService(Service):
     TEMP_MP4_PATH = "/tmp/a.mp4"
     WAIT_TIME_FOR_WIRELESS_DEBUG_DIALOG_VANISHED = 15
+    RETRY_COUNT_SCRCPY_CMD = 10
 
     def __init__(self,name):
         super().__init__(name)
@@ -173,19 +181,32 @@ class ScrcpyService(Service):
     def phone(self):
         return os.environ["SCRCPY_PHONE"]
 
+    def __call_scrcpy_cmd_with_retry(self):
+        command = ["/usr/local/bin/scrcpy", "--tcpip=" + self.phone(), "--verbosity=verbose", "--record=%s" % (self.TEMP_MP4_PATH)]
+
+        for i in range(self.RETRY_COUNT_SCRCPY_CMD):
+            mp4 = Mp4File(self.TEMP_MP4_PATH)
+            mp4.remove_file()
+            print("DEBUG(%d): %s" % (i, " ".join(command)))
+            proc = subprocess.Popen(command)
+            print("INFO: enter sleep")
+            time.sleep(self.WAIT_TIME_FOR_WIRELESS_DEBUG_DIALOG_VANISHED)
+            #FIXME: this code is buggy. if process(scrcpy) already done. send_signal send to unexpeced another process!!! only if OS get same PID
+            print("INFO: SIGINT")
+            proc.send_signal(SIGINT)
+            if mp4.exists_file() is True:
+                print("INFO: OK")
+                break
+            print("ERROR: mp4 file get failed from scrcpy retry")
+
     #WARN: this code is not thread safe!!
     def get_screen_shot(self, file_name="/tmp/gaa_screen_temp.jpg"):
         print("TRACE: get_screen_shot with %s" % (file_name))
-        #TODO: retry is server connection error
-        command = ["/usr/local/bin/scrcpy", "--tcpip=" + self.phone(), "--verbosity=verbose", "--record=/tmp/a.mp4"]
-        print("DEBUG: %s" % " ".join(command))
-        proc = subprocess.Popen(command)
-        time.sleep(self.WAIT_TIME_FOR_WIRELESS_DEBUG_DIALOG_VANISHED)
-        proc.send_signal(SIGINT)
+        self.__call_scrcpy_cmd_with_retry()
         time.sleep(5)
-        mp4 = Mp4Information(self.TEMP_MP4_PATH)
+        mp4 = Mp4File(self.TEMP_MP4_PATH)
         print(f"[DEBUG] MP4 = {mp4.get_last_sec()}")
-        command = ["ffmpeg", "-i", "/tmp/a.mp4", "-ss", str(mp4.get_last_sec()) , "-frames:v", "1", file_name, "-y"]
+        command = ["ffmpeg", "-i", self.TEMP_MP4_PATH, "-ss", str(mp4.get_last_sec()) , "-frames:v", "1", file_name, "-y"]
         #subprocess.check_output(command)
         #TODO: if ffmpeg is failed gaa..jpg should not be created
         subprocess.call(command)
