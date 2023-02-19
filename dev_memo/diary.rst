@@ -22,7 +22,91 @@ object_detection_ResNet.rstのトライ7の結果が過去一番良かったこ�
 
 ということで、トライ7の条件でやると、トライ7の結果以上のコトは得られないため、トライ7の上手く行った時の条件(edge加工で認識)は変えずに、上記の検討が残っている条件を変えて試してみる。
 
-まず、1についてoutput_sizeを1000にする.
+まず、1についてoutput_sizeを1000にする.::
+
+  a@pytorch:~/resset$ git diff core/resnet34.py
+  diff --git a/core/resnet34.py b/core/resnet34.py
+  index eab3ff3..6280c8b 100644
+  --- a/core/resnet34.py
+  +++ b/core/resnet34.py
+  @@ -23,8 +23,9 @@ from gaa import *
+   from single import *
+   
+   class GAAResNet34():
+  -    def __init__(self, output_classes=None, train_ratio=0.7, batch_size=32, epochs=5, verbose=True):
+  -        self.model = resnet34(pretrained=True)
+  +    def __init__(self, output_classes=None, train_ratio=0.7, batch_size=32, epochs=5, verbose=True, pretrained_weight_file=None):
+  +        #self.model = resnet34(pretrained=True)
+  +        self.model = resnet34(pretrained=False)
+           #self.model.fc = nn.Linear(512,35)
+           self.model.fc = nn.Linear(512,output_classes)
+           
+  @@ -32,6 +33,11 @@ class GAAResNet34():
+           self.model.cpu()
+           self.verbose = verbose
+   
+  +        self.best_avg_loss = 100000000000000 #tekitou
+  +
+  +        if pretrained_weight_file is not None:
+  +            self.load(pretrained_weight_file)
+  +
+       def train_aux(self,epoch):
+           total_loss = 0
+           total_size = 0
+  @@ -54,10 +60,17 @@ class GAAResNet34():
+                   print("DEBUG: time=%d, batch_idx=%d, len(data)=%d, batch_idx * len(data)=%d" % (int(e_t-s_t),batch_idx, len(data), batch_idx*len(data)))
+               if batch_idx % report == 0:
+                   now = datetime.datetime.now()
+  +                avg_loss = total_loss / total_size
+                   print('[{}] Train Epoch: {} [{}/{} ({:.0f}%)]\tAverage loss: {:.6f}'.format(
+                       now,
+                       epoch, batch_idx * len(data), len(self.train_loader.dataset),
+  -                    100. * batch_idx * len(data) / len(self.train_loader.dataset), total_loss / total_size))
+  +                    100. * batch_idx * len(data) / len(self.train_loader.dataset), avg_loss))
+  +
+  +                if self.best_avg_loss > avg_loss:
+  +                    print("BEST LOSS UPDATED!!!")
+  +                    self.best_avg_loss = avg_loss
+  +                    self.save("./weights/best_weight.pth")
+  +
+   
+               sys.stdout.flush()
+   
+  @@ -73,6 +86,8 @@ class GAAResNet34():
+   
+   
+       def train(self, dataset, train_ratio=0.7, batch_size=32, epochs=5):
+  +        print("INFO: train start. show model info")
+  +        print(self.model)
+           self.dataset = dataset
+           self.batch_size = batch_size
+           self.epochs = epochs
+  @@ -157,9 +172,10 @@ if __name__ == "__main__":
+       print("dataset size = %d" % (len(dataset)))
+       print("dataset classses = %d" % (dataset.classes()))
+   
+  +    #gaa_resnet_34 = GAAResNet34(output_classes=dataset.classes(), verbose=False, pretrained_weight_file="./weights/resnet_only_try6.pth")
+       gaa_resnet_34 = GAAResNet34(output_classes=dataset.classes(), verbose=False)
+       if sys.argv[1] == "train":
+  -        gaa_resnet_34.train(dataset,epochs=5)
+  +        gaa_resnet_34.train(dataset,epochs=100)
+           gaa_resnet_34.save("./weights/best_weight.pth")
+       elif sys.argv[1] == "test":
+           gaa_resnet_34.load("./weights/best_weight.pth")
+  a@pytorch:~/resset$ 
+
+前の重みを一旦引き継いでいない点に注意！(引き継いでいたせいで一回try8が失敗)。そして以下で再試行
+
+::
+
+  a@dataaug:~/gaa_learning_task$ nohup ./create_task.py  --algo resnet34 resnet_only_try8 &
+  [1] 212176
+  a@dataaug:~/gaa_learning_task$ nohup: ignoring input and appending output to 'nohup.out'
+  
+  a@dataaug:~/gaa_learning_task$ 
+  a@dataaug:~/gaa_learning_task$ cat nohup.out 
+  a@dataaug:~/gaa_learning_task$ 
+  
 
 
 2023/02/13-02/15
