@@ -11,13 +11,21 @@ GitHubのissuesの機能を使って、GAAの機能コンポ(サービス)ごと
 gaa
 -----
 
-1. (ResNet34?) 確信度0.8以上のものを報告するようにする。
-
 3. lu/ruの切り出し。どうも400 x 400は切り出し過ぎ。誤検出する領域が広がってしまう。このため、SSD/ResNet34への入力サイズは400 x 400にするんだけど、実際の切り出し領域はもう少し、400 x 400の上半分、つまり、400 x 200くらいにしても十分closeが入ると思われる。
 
-4.「広告をみる」ボタンを考慮した対応をGAA本体側に施す。 → ちょっとできた
-
 5. GAA側のimage logging。
+
+6. UserWarningがうざくて、ログが埋まる
+
+7. 動作が重い。とにかく重い。
+
+8. closeの認識精度が悪い(間違って検出、検出しない。など）
+
+9. No7の軽減策だが、画面の遷移を認識する仕組みを考える。例えば、いまだとadbuttonを押した後、ゲームのほうで広告をロード中とかの理由で広告に遷移しない場合がある。その場合、広告が流れているとGAA側は誤認識して、closeを押しに行こうとするので、変にゲーム画面が遷移する場合がある。このようなケースを防止するために、画面が変わったかどうかを判定する仕組みが必要。たとえば、beforeとafterで画面全体をとっておき、どれくらいの画素数が変わったかで判断する。例えば、50%以上画素が変化した場合は画面が遷移したなどで判定できるようにする。
+
+10. adbuttonの認識をSSDを使わずに固定された座標で対応するようにする(優先度低？今のadbutton認識の精度が悪ければ検討)
+
+11. scrcpyで画面が取れない場合に再度リトライする仕組み
 
 SSD
 -----
@@ -31,6 +39,8 @@ ResNet34
 
 gaa_learning_task
 -------------------------
+
+  
 
 
 game_eye
@@ -49,6 +59,9 @@ dl_image_manager
 
 1. master/image.jpgからannotation xmlを自動生成する。例えば、master/image.jpgが300 x 100の画像だとすると、annotationの画像サイズを指定するところもそのサイズだし、ピッタリサイズなのでxmin/ymin,xmax/ymaxの自動的に決定されるので。
 
+  
+
+
 実施済みのissue
 ====================
 
@@ -56,7 +69,15 @@ gaa
 -----
 2. closeの認識、利用箇所でラベルがcloseかどうかを気にしていないので、それをフィルタリングするようにする。つまりcloseを識別したいのであれば、*close*の指定を行う。など。　→　雑だけど完了。
 
+4.「広告をみる」ボタンを考慮した対応をGAA本体側に施す。 → ちょっとできた::
 
+  commit a3a629dc7f60ebbe6981fb2e05eb7d5f9910b8e4
+  Author: kazuhiro MIYASHITA <miyakz1192@gmail.com>
+  Date:   Thu Feb 9 15:11:22 2023 +0000
+  
+      ad button loop support
+
+1. (ResNet34?) 確信度0.8以上のものを報告するようにする。→ 完了
 
 SSD
 -----
@@ -84,6 +105,13 @@ gaa_learning_task
 
 2. depoy.pyにて、SSDとResNet34の各々において、data_set.tar.gzを展開する処理を忘れていたので、追加してみたいとおもう。→　完了
 
+1. algo選択サポートOK::
+  commit 37216edd40f8701f904afa05580e0700fc05245d (HEAD -> master, origin/master)
+  Author: kazuhiro MIYASHITA <miyakz1192@gmail.com>
+  Date:   Sat Feb 11 15:25:56 2023 +0000
+  
+      select algo support
+
 game_eye
 -----------------
 
@@ -94,6 +122,16 @@ commit 4205ec5bf3e436ffcd37ea86431db680c50187c9 (HEAD -> master, origin/master)
 
 gaa_lib
 -----------
+
+dl_image_manager
+-------------------
+
+2. resnet34/ssdごとにprojectsの内容を切り替えられるようにする。commonと各アルゴリズム固有のモノを分ける。::
+  commit 2c7a50ded24b6ac237b79098067dced7e06f817d (HEAD -> master, origin/master, origin/HEAD)
+  Author: kazuhiro MIYASHITA <miyakz1192@gmail.com>
+  Date:   Sat Feb 11 15:20:24 2023 +0000
+  
+      support for changing projects each algo
 
 
 
