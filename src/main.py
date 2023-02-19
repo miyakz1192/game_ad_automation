@@ -105,14 +105,16 @@ class ScreenShotImage():
     def __init__(self, image):
         self.image = image
 
-    def extract_left_upper(self, width=400, height=400):
+    def extract_left_upper(self, width=400, height=400, remain_height=200):
         left_upper = self.image[0:height,0:width]
+        left_upper[remain_height:height, 0:width] = 0
         return ScreenShotImage(left_upper)
 
-    def extract_right_upper(self, width=400, height=400):
+    def extract_right_upper(self, width=400, height=400, remain_height=200):
         ymax = self.image.shape[0]
         xmax = self.image.shape[1]
         right_upper = self.image[0:height,xmax-width:xmax]
+        right_upper[remain_height:height, 0:width] = 0
         return ScreenShotImage(right_upper)
 
     #start_pos = (x,y) #tuple
