@@ -5,6 +5,771 @@ GAA改造日記
 全体的な人気をすべてこちらに集約することにする。
 すでにバラけたものを集約すること無く、新しい情報からこちらに集約する。
 
+2023/02/13-02/15
+=================
+
+pretrained=Falseにして、output classes=10、epoch 20で学習させた結果。
+少しだけ良くなっている。もしかしたら、学習続ければ続けるほど行けるかも。実験的にepoch 20 →  40に増やしてみる。
+(これで行けるなら、epochを無限位にしてSSD見たいにベストを保存する形にすれば良いかも？)::
+
+  a@dataaug:~/gaa_learning_task/output/resnet_only_try3$ cat calc_exp_res_close.txt 
+  INFO: gathering class than 0 as 0
+  =====RECORD INFO=====
+  total = 209
+  =====SUM=====
+  0.100000, 0, 209, 100
+  0.200000, 0, 209, 100
+  0.300000, 0, 209, 100
+  0.400000, 0, 207, 99
+  0.500000, 0, 207, 99
+  0.600000, 0, 207, 99
+  0.700000, 0, 205, 98
+  0.800000, 0, 202, 96
+  =====SUM(INVERT RAITIO)=====
+  0.100000, 0, 209, 0
+  0.200000, 0, 209, 0
+  0.300000, 0, 209, 0
+  0.400000, 0, 207, 0
+  0.500000, 0, 207, 0
+  0.600000, 0, 207, 0
+  0.700000, 0, 205, 1
+  0.800000, 0, 202, 3
+  a@dataaug:~/gaa_learning_task/output/resnet_only_try3$ cat calc_exp_res_not_close.txt 
+  INFO: gathering class than 0 as 0
+  =====RECORD INFO=====
+  total = 1281
+  =====SUM=====
+  0.100000, 0, 1281, 100
+  0.200000, 0, 1281, 100
+  0.300000, 0, 1279, 99
+  0.400000, 0, 1252, 97
+  0.500000, 0, 1222, 95
+  0.600000, 0, 1178, 91
+  0.700000, 0, 1143, 89
+  0.800000, 0, 968, 75
+  0.900000, 0, 17, 1
+  =====SUM(INVERT RAITIO)=====
+  0.100000, 0, 1281, 0
+  0.200000, 0, 1281, 0
+  0.300000, 0, 1279, 0
+  0.400000, 0, 1252, 2
+  0.500000, 0, 1222, 4
+  0.600000, 0, 1178, 8
+  0.700000, 0, 1143, 10
+  0.800000, 0, 968, 24
+  0.900000, 0, 17, 98
+  a@dataaug:~/gaa_learning_task/output/resnet_only_try3$ 
+
+  dataset size = 2871
+  dataset classses = 10
+                precision    recall  f1-score   support
+  
+             0       0.86      0.99      0.92       254
+             1       0.88      0.96      0.92       241
+             2       0.84      1.00      0.91       145
+             3       0.00      0.00      0.00        37
+             4       0.00      0.00      0.00        37
+             5       0.00      0.00      0.00        27
+             6       0.00      0.00      0.00        36
+             7       0.00      0.00      0.00        27
+             8       0.41      0.90      0.56        29
+             9       0.43      1.00      0.60        29
+  
+      accuracy                           0.79       862
+     macro avg       0.34      0.49      0.39       862
+  weighted avg       0.67      0.79      0.72       862
+
+ロスも減少傾向であり、epochを重ねれば下がりそうな予感。::  
+
+  [2023-02-12 15:22:56.590093] Train Epoch: 19 [1920/2009 (96%)]  Average loss: 0.015847
+
+以下でトライ::
+
+  a@dataaug:~/gaa_learning_task$  nohup ./create_task.py resnet_only_try4 --algo resnet34 &
+  [1] 26388
+  a@dataaug:~/gaa_learning_task$ nohup: ignoring input and appending output to 'nohup.out'
+  
+  a@dataaug:~/gaa_learning_task$ date
+  Sun 12 Feb 2023 10:38:59 PM UTC
+  a@dataaug:~/gaa_learning_task$ 
+
+結果はこう。::
+
+  INFO main
+  dataset size = 2871
+  dataset classses = 10
+                precision    recall  f1-score   support
+  
+             0       0.88      1.00      0.93       253
+             1       0.88      0.99      0.93       233
+             2       0.85      0.99      0.91       167
+             3       0.00      0.00      0.00        32
+             4       0.48      0.96      0.64        25
+             5       0.00      0.00      0.00        29
+             6       0.00      0.00      0.00        31
+             7       0.00      0.00      0.00        30
+             8       0.56      0.97      0.71        36
+             9       0.00      0.00      0.00        26
+  
+      accuracy                           0.82       862
+     macro avg       0.36      0.49      0.41       862
+  weighted avg       0.70      0.82      0.75       862
+  
+んー。::
+  
+  a@dataaug:~/gaa_learning_task/output/resnet_only_try4$ cat calc_exp_res_close.txt ; cat calc_exp_res_not_close.txt 
+  INFO: gathering class than 0 as 0
+  =====RECORD INFO=====
+  total = 209
+  =====SUM=====
+  0.100000, 0, 209, 100
+  0.200000, 0, 209, 100
+  0.300000, 0, 209, 100
+  0.400000, 0, 209, 100
+  0.500000, 0, 209, 100
+  0.600000, 0, 209, 100
+  0.700000, 0, 209, 100
+  0.800000, 0, 209, 100
+  0.900000, 0, 2, 0
+  =====SUM(INVERT RAITIO)=====
+  0.100000, 0, 209, 0
+  0.200000, 0, 209, 0
+  0.300000, 0, 209, 0
+  0.400000, 0, 209, 0
+  0.500000, 0, 209, 0
+  0.600000, 0, 209, 0
+  0.700000, 0, 209, 0
+  0.800000, 0, 209, 0
+  0.900000, 0, 2, 99
+  INFO: gathering class than 0 as 0
+  =====RECORD INFO=====
+  total = 1281
+  =====SUM=====
+  0.100000, 0, 1281, 100
+  0.200000, 0, 1281, 100
+  0.300000, 0, 1279, 99
+  0.400000, 0, 1278, 99
+  0.500000, 0, 1268, 98
+  0.600000, 0, 1254, 97
+  0.700000, 0, 1241, 96
+  0.800000, 0, 1215, 94
+  0.900000, 0, 159, 12
+  =====SUM(INVERT RAITIO)=====
+  0.100000, 0, 1281, 0
+  0.200000, 0, 1281, 0
+  0.300000, 0, 1279, 0
+  0.400000, 0, 1278, 0
+  0.500000, 0, 1268, 1
+  0.600000, 0, 1254, 2
+  0.700000, 0, 1241, 3
+  0.800000, 0, 1215, 5
+  0.900000, 0, 159, 87
+  a@dataaug:~/gaa_learning_task/output/resnet_only_try4$ 
+
+もうちょっと精細にしてみても。::
+
+  a@dataaug:~/gaa_learning_task/output/resnet_only_try4$ cat calc_exp_res_close.txt ; cat calc_exp_res_not_close.txt 
+  INFO: gathering class than 0 as 0
+  =====RECORD INFO=====
+  total = 209
+  =====SUM=====
+  0.100000, 0, 209, 100
+  0.200000, 0, 209, 100
+  0.300000, 0, 209, 100
+  0.400000, 0, 209, 100
+  0.500000, 0, 209, 100
+  0.600000, 0, 209, 100
+  0.700000, 0, 209, 100
+  0.800000, 0, 209, 100
+  0.850000, 0, 209, 100
+  0.870000, 0, 127, 60
+  0.880000, 0, 44, 21
+  0.890000, 0, 4, 1
+  0.900000, 0, 2, 0
+  =====SUM(INVERT RAITIO)=====
+  0.100000, 0, 209, 0
+  0.200000, 0, 209, 0
+  0.300000, 0, 209, 0
+  0.400000, 0, 209, 0
+  0.500000, 0, 209, 0
+  0.600000, 0, 209, 0
+  0.700000, 0, 209, 0
+  0.800000, 0, 209, 0
+  0.850000, 0, 209, 0
+  0.870000, 0, 127, 39
+  0.880000, 0, 44, 78
+  0.890000, 0, 4, 98
+  0.900000, 0, 2, 99
+  INFO: gathering class than 0 as 0
+  =====RECORD INFO=====
+  total = 1281
+  =====SUM=====
+  0.100000, 0, 1281, 100
+  0.200000, 0, 1281, 100
+  0.300000, 0, 1279, 99
+  0.400000, 0, 1278, 99
+  0.500000, 0, 1268, 98
+  0.600000, 0, 1254, 97
+  0.700000, 0, 1241, 96
+  0.800000, 0, 1215, 94
+  0.850000, 0, 1164, 90
+  0.870000, 0, 920, 71
+  0.880000, 0, 616, 48
+  0.890000, 0, 363, 28
+  0.900000, 0, 159, 12
+  =====SUM(INVERT RAITIO)=====
+  0.100000, 0, 1281, 0
+  0.200000, 0, 1281, 0
+  0.300000, 0, 1279, 0
+  0.400000, 0, 1278, 0
+  0.500000, 0, 1268, 1
+  0.600000, 0, 1254, 2
+  0.700000, 0, 1241, 3
+  0.800000, 0, 1215, 5
+  0.850000, 0, 1164, 9
+  0.870000, 0, 920, 28
+  0.880000, 0, 616, 51
+  0.890000, 0, 363, 71
+  0.900000, 0, 159, 87
+  a@dataaug:~/gaa_learning_task/output/resnet_only_try4$ 
+    
+確信度0.87を採用しても正答率60%、誤答率71%となり、誤答率が高すぎ使い物にならないことがわかった。
+ただし、::
+
+  [2023-02-12 23:41:54.379113] Train Epoch: 39 [1920/2009 (96%)]  Average loss: 0.014303
+
+epoch数を増やすほどにlossが下がる傾向であることも同時にわかったため、
+学習回数を増加させるほど結果がよくなりそうな予感はする。
+
+今回得られた重みをresumeにして、さらにepochを長くすることを実施してみたいと思う。::
+
+  a@pytorch:~/resset$ git diff core/resnet34.py
+  diff --git a/core/resnet34.py b/core/resnet34.py
+  index eab3ff3..6f4ca87 100644
+  --- a/core/resnet34.py
+  +++ b/core/resnet34.py
+  @@ -23,8 +23,9 @@ from gaa import *
+   from single import *
+   
+   class GAAResNet34():
+  -    def __init__(self, output_classes=None, train_ratio=0.7, batch_size=32, epochs=5, verbose=True):
+  -        self.model = resnet34(pretrained=True)
+  +    def __init__(self, output_classes=None, train_ratio=0.7, batch_size=32, epochs=5, verbose=True, pretrained_weight_file=None):
+  +        #self.model = resnet34(pretrained=True)
+  +        self.model = resnet34(pretrained=False)
+           #self.model.fc = nn.Linear(512,35)
+           self.model.fc = nn.Linear(512,output_classes)
+           
+  @@ -32,6 +33,9 @@ class GAAResNet34():
+           self.model.cpu()
+           self.verbose = verbose
+   
+  +        if pretrained_weight_file is not None:
+  +            self.load(pretrained_weight_file)
+  +
+       def train_aux(self,epoch):
+           total_loss = 0
+           total_size = 0
+  @@ -73,6 +77,8 @@ class GAAResNet34():
+   
+   
+       def train(self, dataset, train_ratio=0.7, batch_size=32, epochs=5):
+  +        print("INFO: train start. show model info")
+  +        print(self.model)
+           self.dataset = dataset
+           self.batch_size = batch_size
+           self.epochs = epochs
+  @@ -157,9 +163,9 @@ if __name__ == "__main__":
+       print("dataset size = %d" % (len(dataset)))
+       print("dataset classses = %d" % (dataset.classes()))
+   
+  -    gaa_resnet_34 = GAAResNet34(output_classes=dataset.classes(), verbose=False)
+  +    gaa_resnet_34 = GAAResNet34(output_classes=dataset.classes(), verbose=False, pretrained_weight_file="./weights/resnet_only_try4.pth")
+       if sys.argv[1] == "train":
+  -        gaa_resnet_34.train(dataset,epochs=5)
+  +        gaa_resnet_34.train(dataset,epochs=100)
+           gaa_resnet_34.save("./weights/best_weight.pth")
+       elif sys.argv[1] == "test":
+           gaa_resnet_34.load("./weights/best_weight.pth")
+  a@pytorch:~/resset$ 
+
+上記の変更にて、try4の重みを元にepoch100を回してみる::
+
+  a@dataaug:~/gaa_learning_task$ nohup ./create_task.py  resnet_only_try5 &
+  [1] 33892
+  a@dataaug:~/gaa_learning_task$ nohup: ignoring input and appending output to 'nohup.out'
+  
+  a@dataaug:~/gaa_learning_task$ 
+
+数値が改善する方向になるかを見ていこう。::
+
+  a@dataaug:~/gaa_learning_task/output/resnet_only_try5$ cat calc_exp_res_close.txt ; cat calc_exp_res_not_close.txt 
+  INFO: gathering class than 0 as 0
+  =====RECORD INFO=====
+  total = 209
+  =====SUM=====
+  0.100000, 0, 209, 100
+  0.200000, 0, 209, 100
+  0.300000, 0, 209, 100
+  0.400000, 0, 209, 100
+  0.500000, 0, 209, 100
+  0.600000, 0, 208, 99
+  0.700000, 0, 207, 99
+  0.800000, 0, 202, 96
+  0.850000, 0, 147, 70
+  0.870000, 0, 82, 39
+  0.880000, 0, 34, 16
+  0.890000, 0, 9, 4
+  0.900000, 0, 1, 0
+  =====SUM(INVERT RAITIO)=====
+  0.100000, 0, 209, 0
+  0.200000, 0, 209, 0
+  0.300000, 0, 209, 0
+  0.400000, 0, 209, 0
+  0.500000, 0, 209, 0
+  0.600000, 0, 208, 0
+  0.700000, 0, 207, 0
+  0.800000, 0, 202, 3
+  0.850000, 0, 147, 29
+  0.870000, 0, 82, 60
+  0.880000, 0, 34, 83
+  0.890000, 0, 9, 95
+  0.900000, 0, 1, 99
+  INFO: gathering class than 0 as 0
+  =====RECORD INFO=====
+  total = 1281
+  =====SUM=====
+  0.100000, 0, 1281, 100
+  0.200000, 0, 1281, 100
+  0.300000, 0, 1281, 100
+  0.400000, 0, 1275, 99
+  0.500000, 0, 1247, 97
+  0.600000, 0, 1208, 94
+  0.700000, 0, 1162, 90
+  0.800000, 0, 1002, 78
+  0.850000, 0, 624, 48
+  0.870000, 0, 335, 26
+  0.880000, 0, 183, 14
+  0.890000, 0, 73, 5
+  0.900000, 0, 18, 1
+  =====SUM(INVERT RAITIO)=====
+  0.100000, 0, 1281, 0
+  0.200000, 0, 1281, 0
+  0.300000, 0, 1281, 0
+  0.400000, 0, 1275, 0
+  0.500000, 0, 1247, 2
+  0.600000, 0, 1208, 5
+  0.700000, 0, 1162, 9
+  0.800000, 0, 1002, 21
+  0.850000, 0, 624, 51
+  0.870000, 0, 335, 73
+  0.880000, 0, 183, 85
+  0.890000, 0, 73, 94
+  0.900000, 0, 18, 98
+  a@dataaug:~/gaa_learning_task/output/resnet_only_try5$ 
+
+数値はだいぶマシになった。確信度0.85を採用すると、正答率が70%、誤答率が48%(正答率が51%)となる。
+少しずつ使い物になってきた感じがする。::
+
+[2023-02-13 14:59:34.859441] Train Epoch: 99 [1920/2009 (96%)]  Average loss: 0.013235
+
+以下。::
+  
+  INFO main
+  dataset size = 2871
+  dataset classses = 10
+                precision    recall  f1-score   support
+  
+             0       0.93      1.00      0.96       243
+             1       0.91      1.00      0.95       247
+             2       0.84      1.00      0.91       178
+             3       0.00      0.00      0.00        30
+             4       0.21      0.12      0.15        25
+             5       0.00      0.00      0.00        19
+             6       0.00      0.00      0.00        25
+             7       0.00      0.00      0.00        35
+             8       0.51      1.00      0.67        31
+             9       0.45      0.62      0.52        29
+  
+      accuracy                           0.84       862
+     macro avg       0.38      0.47      0.42       862
+  weighted avg       0.73      0.84      0.78       862
+
+もう100 epoch流してみる。::
+
+  a@pytorch:~/resset$ git diff core/resnet34.py
+  diff --git a/core/resnet34.py b/core/resnet34.py
+  index eab3ff3..9fd4b8b 100644
+  --- a/core/resnet34.py
+  +++ b/core/resnet34.py
+  @@ -23,8 +23,9 @@ from gaa import *
+   from single import *
+   
+   class GAAResNet34():
+  -    def __init__(self, output_classes=None, train_ratio=0.7, batch_size=32, epochs=5, verbose=True):
+  -        self.model = resnet34(pretrained=True)
+  +    def __init__(self, output_classes=None, train_ratio=0.7, batch_size=32, epochs=5, verbose=True, pretrained_weight_file=None):
+  +        #self.model = resnet34(pretrained=True)
+  +        self.model = resnet34(pretrained=False)
+           #self.model.fc = nn.Linear(512,35)
+           self.model.fc = nn.Linear(512,output_classes)
+           
+  @@ -32,6 +33,9 @@ class GAAResNet34():
+           self.model.cpu()
+           self.verbose = verbose
+   
+  +        if pretrained_weight_file is not None:
+  +            self.load(pretrained_weight_file)
+  +
+       def train_aux(self,epoch):
+           total_loss = 0
+           total_size = 0
+  @@ -73,6 +77,8 @@ class GAAResNet34():
+   
+   
+       def train(self, dataset, train_ratio=0.7, batch_size=32, epochs=5):
+  +        print("INFO: train start. show model info")
+  +        print(self.model)
+           self.dataset = dataset
+           self.batch_size = batch_size
+           self.epochs = epochs
+  @@ -157,9 +163,9 @@ if __name__ == "__main__":
+       print("dataset size = %d" % (len(dataset)))
+       print("dataset classses = %d" % (dataset.classes()))
+   
+  -    gaa_resnet_34 = GAAResNet34(output_classes=dataset.classes(), verbose=False)
+  +    gaa_resnet_34 = GAAResNet34(output_classes=dataset.classes(), verbose=False, pretrained_weight_file="./weights/resnet_only_try5.pth")
+       if sys.argv[1] == "train":
+  -        gaa_resnet_34.train(dataset,epochs=5)
+  +        gaa_resnet_34.train(dataset,epochs=100)
+           gaa_resnet_34.save("./weights/best_weight.pth")
+       elif sys.argv[1] == "test":
+           gaa_resnet_34.load("./weights/best_weight.pth")
+  a@pytorch:~/resset$ 
+
+try5の重みを継承して、try6を実行中::
+
+  a@dataaug:~/gaa_learning_task$  nohup ./create_task.py --algo resnet34  resnet_only_try6 &
+  [1] 253219
+  a@dataaug:~/gaa_learning_task$ nohup: ignoring input and appending output to 'nohup.out'
+  
+  a@dataaug:~/gaa_learning_task$ 
+
+結果は以下。::
+
+  a@dataaug:~/gaa_learning_task/output/resnet_only_try6$ cat calc_exp_res_close.txt ; cat calc_exp_res_not_close.txt 
+  INFO: gathering class than 0 as 0
+  =====RECORD INFO=====
+  total = 209
+  =====SUM=====
+  0.100000, 0, 209, 100
+  0.200000, 0, 209, 100
+  0.300000, 0, 209, 100
+  0.400000, 0, 209, 100
+  0.500000, 0, 208, 99
+  0.600000, 0, 204, 97
+  0.700000, 0, 199, 95
+  0.800000, 0, 103, 49
+  =====SUM(INVERT RAITIO)=====
+  0.100000, 0, 209, 0
+  0.200000, 0, 209, 0
+  0.300000, 0, 209, 0
+  0.400000, 0, 209, 0
+  0.500000, 0, 208, 0
+  0.600000, 0, 204, 2
+  0.700000, 0, 199, 4
+  0.800000, 0, 103, 50
+  INFO: gathering class than 0 as 0
+  =====RECORD INFO=====
+  total = 1281
+  =====SUM=====
+  0.100000, 0, 1281, 100
+  0.200000, 0, 1281, 100
+  0.300000, 0, 1281, 100
+  0.400000, 0, 1278, 99
+  0.500000, 0, 1249, 97
+  0.600000, 0, 1220, 95
+  0.700000, 0, 1179, 92
+  0.800000, 0, 934, 72
+  0.850000, 0, 64, 4
+  0.870000, 0, 6, 0
+  0.880000, 0, 1, 0
+  =====SUM(INVERT RAITIO)=====
+  0.100000, 0, 1281, 0
+  0.200000, 0, 1281, 0
+  0.300000, 0, 1281, 0
+  0.400000, 0, 1278, 0
+  0.500000, 0, 1249, 2
+  0.600000, 0, 1220, 4
+  0.700000, 0, 1179, 7
+  0.800000, 0, 934, 27
+  0.850000, 0, 64, 95
+  0.870000, 0, 6, 99
+  0.880000, 0, 1, 99
+  a@dataaug:~/gaa_learning_task/output/resnet_only_try6$ 
+
+最後のロスは以下。::
+
+   [2023-02-14 01:34:12.224074] Train Epoch: 99 [1920/2009 (96%)]  Average loss: 0.012906
+
+テスト結果は以下。::
+
+  INFO main
+  dataset size = 2871
+  dataset classses = 10
+                precision    recall  f1-score   support
+  
+             0       0.91      1.00      0.95       214
+             1       0.87      1.00      0.93       247
+             2       0.86      1.00      0.92       183
+             3       0.59      1.00      0.74        37
+             4       0.37      1.00      0.54        25
+             5       0.00      0.00      0.00        21
+             6       0.00      0.00      0.00        37
+             7       0.00      0.00      0.00        30
+             8       0.00      0.00      0.00        26
+             9       0.00      0.00      0.00        42
+  
+      accuracy                           0.82       862
+     macro avg       0.36      0.50      0.41       862
+  weighted avg       0.69      0.82      0.75       862
+
+結果としてあまり良くならないのだけど、たまにロスがすごく下がるのはどうしてだろう？::
+
+  [2023-02-14 01:06:25.257378] Train Epoch: 82 [0/2009 (0%)]      Average loss: 0.007635
+
+SSDのときのようにベストのロスを更新したらweightをsaveするようにしてみて、
+もう100 epoch実施してみよう。::
+
+  a@pytorch:~/resset$ git diff
+  diff --git a/bin/calc_exp.py b/bin/calc_exp.py
+  index a0403dd..dd0a348 100755
+  --- a/bin/calc_exp.py
+  +++ b/bin/calc_exp.py
+  @@ -53,7 +53,7 @@ print("INFO: gathering class than %d as %d" % (args.gathering_class_than, args.g
+   print("=====RECORD INFO=====")
+   print("total = %d" % (len(records)))
+   print("=====SUM=====")
+  -threshold_list = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+  +threshold_list = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.85, 0.87, 0.88, 0.89, 0.9, 1.0]
+   for threshold in threshold_list:
+          summer(threshold, args.calc_target)
+   print("=====SUM(INVERT RAITIO)=====")
+  diff --git a/core/resnet34.py b/core/resnet34.py
+  index eab3ff3..3fa9d42 100644
+  --- a/core/resnet34.py
+  +++ b/core/resnet34.py
+  @@ -23,8 +23,9 @@ from gaa import *
+   from single import *
+   
+   class GAAResNet34():
+  -    def __init__(self, output_classes=None, train_ratio=0.7, batch_size=32, epochs=5, verbose=True):
+  -        self.model = resnet34(pretrained=True)
+  +    def __init__(self, output_classes=None, train_ratio=0.7, batch_size=32, epochs=5, verbose=True, pretrained_weight_file=None):
+  +        #self.model = resnet34(pretrained=True)
+  +        self.model = resnet34(pretrained=False)
+           #self.model.fc = nn.Linear(512,35)
+           self.model.fc = nn.Linear(512,output_classes)
+           
+  @@ -32,6 +33,11 @@ class GAAResNet34():
+           self.model.cpu()
+           self.verbose = verbose
+   
+  +        self.best_avg_loss = 100000000000000 #tekitou
+  +
+  +        if pretrained_weight_file is not None:
+  +            self.load(pretrained_weight_file)
+  +
+       def train_aux(self,epoch):
+           total_loss = 0
+           total_size = 0
+  @@ -54,10 +60,17 @@ class GAAResNet34():
+                   print("DEBUG: time=%d, batch_idx=%d, len(data)=%d, batch_idx * len(data)=%d" % (int(e_t-s_t),batch_idx, len(data), batch_idx*len(data)))
+               if batch_idx % report == 0:
+                   now = datetime.datetime.now()
+  +                avg_loss = total_loss / total_size
+                   print('[{}] Train Epoch: {} [{}/{} ({:.0f}%)]\tAverage loss: {:.6f}'.format(
+                       now,
+                       epoch, batch_idx * len(data), len(self.train_loader.dataset),
+  -                    100. * batch_idx * len(data) / len(self.train_loader.dataset), total_loss / total_size))
+  +                    100. * batch_idx * len(data) / len(self.train_loader.dataset), avg_loss))
+  +
+  +                if self.best_avg_loss > avg_loss:
+  +                    print("BEST LOSS UPDATED!!!")
+  +                    self.best_avg_loss = avg_loss
+  +                    self.save("./weights/best_weight.pth")
+  +
+   
+               sys.stdout.flush()
+   
+  @@ -73,6 +86,8 @@ class GAAResNet34():
+   
+   
+       def train(self, dataset, train_ratio=0.7, batch_size=32, epochs=5):
+  +        print("INFO: train start. show model info")
+  +        print(self.model)
+           self.dataset = dataset
+           self.batch_size = batch_size
+           self.epochs = epochs
+  @@ -157,9 +172,9 @@ if __name__ == "__main__":
+       print("dataset size = %d" % (len(dataset)))
+       print("dataset classses = %d" % (dataset.classes()))
+   
+  -    gaa_resnet_34 = GAAResNet34(output_classes=dataset.classes(), verbose=False)
+  +    gaa_resnet_34 = GAAResNet34(output_classes=dataset.classes(), verbose=False, pretrained_weight_file="./weights/resnet_only_try6.pth")
+       if sys.argv[1] == "train":
+  -        gaa_resnet_34.train(dataset,epochs=5)
+  +        gaa_resnet_34.train(dataset,epochs=100)
+           gaa_resnet_34.save("./weights/best_weight.pth")
+       elif sys.argv[1] == "test":
+           gaa_resnet_34.load("./weights/best_weight.pth")
+  a@pytorch:~/resset$ 
+
+以下で実施。::
+
+  nohup ./create_task.py --algo resnet34  resnet_only_try7 &
+
+  a@dataaug:~/gaa_learning_task/output/resnet_only_try7$ cat calc_exp_res_close.txt 
+  INFO: gathering class than 0 as 0
+  =====RECORD INFO=====
+  total = 209
+  =====SUM=====
+  0.100000, 0, 209, 100
+  0.200000, 0, 209, 100
+  0.300000, 0, 209, 100
+  0.400000, 0, 209, 100
+  0.500000, 0, 209, 100
+  0.600000, 0, 209, 100
+  0.700000, 0, 209, 100
+  0.800000, 0, 209, 100
+  0.850000, 0, 205, 98
+  0.870000, 0, 114, 54
+  0.880000, 0, 55, 26
+  0.890000, 0, 6, 2
+  0.900000, 0, 2, 0
+  =====SUM(INVERT RAITIO)=====
+  0.100000, 0, 209, 0
+  0.200000, 0, 209, 0
+  0.300000, 0, 209, 0
+  0.400000, 0, 209, 0
+  0.500000, 0, 209, 0
+  0.600000, 0, 209, 0
+  0.700000, 0, 209, 0
+  0.800000, 0, 209, 0
+  0.850000, 0, 205, 1
+  0.870000, 0, 114, 45
+  0.880000, 0, 55, 73
+  0.890000, 0, 6, 97
+  0.900000, 0, 2, 99
+  a@dataaug:~/gaa_learning_task/output/resnet_only_try7$ cat calc_exp_res_not_close.txt 
+  INFO: gathering class than 0 as 0
+  =====RECORD INFO=====
+  total = 1281
+  =====SUM=====
+  0.100000, 0, 1281, 100
+  0.200000, 0, 1281, 100
+  0.300000, 0, 1281, 100
+  0.400000, 0, 1281, 100
+  0.500000, 0, 1273, 99
+  0.600000, 0, 1266, 98
+  0.700000, 0, 1251, 97
+  0.800000, 0, 1242, 96
+  0.850000, 0, 1207, 94
+  0.870000, 0, 1043, 81
+  0.880000, 0, 787, 61
+  0.890000, 0, 370, 28
+  0.900000, 0, 130, 10
+  =====SUM(INVERT RAITIO)=====
+  0.100000, 0, 1281, 0
+  0.200000, 0, 1281, 0
+  0.300000, 0, 1281, 0
+  0.400000, 0, 1281, 0
+  0.500000, 0, 1273, 0
+  0.600000, 0, 1266, 1
+  0.700000, 0, 1251, 2
+  0.800000, 0, 1242, 3
+  0.850000, 0, 1207, 5
+  0.870000, 0, 1043, 18
+  0.880000, 0, 787, 38
+  0.890000, 0, 370, 71
+  0.900000, 0, 130, 89
+  a@dataaug:~/gaa_learning_task/output/resnet_only_try7$ 
+
+実行したコマンドは以下(参考)。::
+
+./bin/calc_exp.py --gathering_class_than 0 --gathering_class_as 0 --calc_target 0 check_res_close_edge.log > calc_exp_res_close.txt
+./bin/calc_exp.py --gathering_class_than 0 --gathering_class_as 0 --calc_target 0 check_res_not_close_edge.log > calc_exp_res_not_close.txt
+./bin/calc_exp.py --gathering_class_than 0 --gathering_class_as 0 --calc_target 0 check_res_close.log > calc_exp_res_close_not_edge.txt
+./bin/calc_exp.py --gathering_class_than 0 --gathering_class_as 0 --calc_target 0 check_res_not_close.log > calc_exp_res_not_close_not_edge.txt
+
+上記の結果はedge画像をResNet34に通した結果だが、精度が悪い（正答率と誤答率のバランスが取れない)。
+しかし、edge画像じゃないものを通してみた結果、以下になった。::
+
+  a@pytorch:~/resset$ !2025
+  cat calc_exp_res_close_not_edge.txt ; cat calc_exp_res_not_close_not_edge.txt
+  INFO: gathering class than 0 as 0
+  =====RECORD INFO=====
+  total = 209
+  =====SUM=====
+  0.100000, 0, 209, 100
+  0.200000, 0, 209, 100
+  0.300000, 0, 208, 99
+  0.400000, 0, 201, 96
+  0.500000, 0, 174, 83
+  0.600000, 0, 121, 57
+  0.700000, 0, 105, 50
+  0.800000, 0, 94, 44
+  0.850000, 0, 25, 11
+  0.870000, 0, 5, 2
+  0.880000, 0, 1, 0
+  =====SUM(INVERT RAITIO)=====
+  0.100000, 0, 209, 0
+  0.200000, 0, 209, 0
+  0.300000, 0, 208, 0
+  0.400000, 0, 201, 3
+  0.500000, 0, 174, 16
+  0.600000, 0, 121, 42
+  0.700000, 0, 105, 49
+  0.800000, 0, 94, 55
+  0.850000, 0, 25, 88
+  0.870000, 0, 5, 97
+  0.880000, 0, 1, 99
+  INFO: gathering class than 0 as 0
+  =====RECORD INFO=====
+  total = 1281
+  =====SUM=====
+  0.100000, 0, 1281, 100
+  0.200000, 0, 1281, 100
+  0.300000, 0, 1263, 98
+  0.400000, 0, 1192, 93
+  0.500000, 0, 1106, 86
+  0.600000, 0, 980, 76
+  0.700000, 0, 894, 69
+  0.800000, 0, 732, 57
+  0.850000, 0, 184, 14
+  0.870000, 0, 103, 8
+  0.880000, 0, 59, 4
+  0.890000, 0, 39, 3
+  0.900000, 0, 20, 1
+  =====SUM(INVERT RAITIO)=====
+  0.100000, 0, 1281, 0
+  0.200000, 0, 1281, 0
+  0.300000, 0, 1263, 1
+  0.400000, 0, 1192, 6
+  0.500000, 0, 1106, 13
+  0.600000, 0, 980, 23
+  0.700000, 0, 894, 30
+  0.800000, 0, 732, 42
+  0.850000, 0, 184, 85
+  0.870000, 0, 103, 91
+  0.880000, 0, 59, 95
+  0.890000, 0, 39, 96
+  0.900000, 0, 20, 98
+  a@pytorch:~/resset$ 
+
+確信度0.5を採用すれば正答率50%、誤答率50%となるが、、、ちょっと採用は厳しいなぁ。
+
+
 2023/02/12
 ===========
 
