@@ -105,14 +105,16 @@ class ScreenShotImage():
     def __init__(self, image):
         self.image = image
 
-    def extract_left_upper(self, width=400, height=400):
+    def extract_left_upper(self, width=400, height=400, remain_height=200):
         left_upper = self.image[0:height,0:width]
+        left_upper[remain_height:height, 0:width] = 0
         return ScreenShotImage(left_upper)
 
-    def extract_right_upper(self, width=400, height=400):
+    def extract_right_upper(self, width=400, height=400, remain_height=200):
         ymax = self.image.shape[0]
         xmax = self.image.shape[1]
         right_upper = self.image[0:height,xmax-width:xmax]
+        right_upper[remain_height:height, 0:width] = 0
         return ScreenShotImage(right_upper)
 
     #start_pos = (x,y) #tuple
@@ -135,9 +137,29 @@ class ScreenShotImage():
 
         return ScreenShotImage(temp)
 
-class Mp4Information:
+    #this core retrun True is self and target_screen_shot_image shape is same, and different pixels are over threshold between self and target_screen_shot_image's
+    def eq(self, target_screen_shot_image, threshold=0.7):
+        if self.image.shape != target_screen_shot_image.image.shape:
+            return False
+
+        #give short name
+        this = self.image
+        target = target_screen_shot_image.image
+
+        count = np.count_nonzero(this == target) / this.size
+
+        return count > threshold
+
+class Mp4File:
     def __init__(self, file_name):
         self.file_name = file_name
+
+    def remove_file(self):
+        if self.exists_file() is True:
+            os.remove(self.file_name)
+
+    def exists_file(self):
+        return os.path.isfile(self.file_name)
 
     def get_duration(self):
         #ffprobe -v quiet -print_format json -show_format -show_streams  -i /tmp/a.mp4
@@ -147,10 +169,11 @@ class Mp4Information:
 
     def get_last_sec(self):
         return int(self.get_duration())
-    
+
 class ScrcpyService(Service):
     TEMP_MP4_PATH = "/tmp/a.mp4"
     WAIT_TIME_FOR_WIRELESS_DEBUG_DIALOG_VANISHED = 15
+    RETRY_COUNT_SCRCPY_CMD = 10
 
     def __init__(self,name):
         super().__init__(name)
@@ -158,23 +181,37 @@ class ScrcpyService(Service):
     def phone(self):
         return os.environ["SCRCPY_PHONE"]
 
-    def get_screen_shot(self):
-        print("TRACE: get_screen_shot")
-        #TODO: retry is server connection error
-        command = ["/usr/local/bin/scrcpy", "--tcpip=" + self.phone(), "--verbosity=verbose", "--record=/tmp/a.mp4"]
-        print("DEBUG: %s" % " ".join(command))
-        proc = subprocess.Popen(command)
-        time.sleep(self.WAIT_TIME_FOR_WIRELESS_DEBUG_DIALOG_VANISHED)
-        proc.send_signal(SIGINT)
+    def __call_scrcpy_cmd_with_retry(self):
+        command = ["/usr/local/bin/scrcpy", "--tcpip=" + self.phone(), "--verbosity=verbose", "--record=%s" % (self.TEMP_MP4_PATH)]
+
+        for i in range(self.RETRY_COUNT_SCRCPY_CMD):
+            mp4 = Mp4File(self.TEMP_MP4_PATH)
+            mp4.remove_file()
+            print("DEBUG(%d): %s" % (i, " ".join(command)))
+            proc = subprocess.Popen(command)
+            print("INFO: enter sleep")
+            time.sleep(self.WAIT_TIME_FOR_WIRELESS_DEBUG_DIALOG_VANISHED)
+            #FIXME: this code is buggy. if process(scrcpy) already done. send_signal send to unexpeced another process!!! only if OS get same PID
+            print("INFO: SIGINT")
+            proc.send_signal(SIGINT)
+            if mp4.exists_file() is True:
+                print("INFO: OK")
+                break
+            print("ERROR: mp4 file get failed from scrcpy retry")
+
+    #WARN: this code is not thread safe!!
+    def get_screen_shot(self, file_name="/tmp/gaa_screen_temp.jpg"):
+        print("TRACE: get_screen_shot with %s" % (file_name))
+        self.__call_scrcpy_cmd_with_retry()
         time.sleep(5)
-        mp4 = Mp4Information(self.TEMP_MP4_PATH)
+        mp4 = Mp4File(self.TEMP_MP4_PATH)
         print(f"[DEBUG] MP4 = {mp4.get_last_sec()}")
-        command = ["ffmpeg", "-i", "/tmp/a.mp4", "-ss", str(mp4.get_last_sec()) , "-frames:v", "1", "/tmp/gaa_screen_temp.jpg", "-y"]
+        command = ["ffmpeg", "-i", self.TEMP_MP4_PATH, "-ss", str(mp4.get_last_sec()) , "-frames:v", "1", file_name, "-y"]
         #subprocess.check_output(command)
         #TODO: if ffmpeg is failed gaa..jpg should not be created
         subprocess.call(command)
         #TODO: consider is gaa...jpg is not found
-        return ScreenShotFile("/tmp/gaa_screen_temp.jpg")
+        return ScreenShotFile(file_name)
 
     def touch_position(self, pos):
         print("TRACE: touch position")
@@ -196,6 +233,19 @@ class ScrcpyService(Service):
         subprocess.run(command , shell=True)
         time.sleep(5)
         proc.send_signal(SIGINT)
+
+    def wait_screen_changed(self, before_screen_shot_f):
+        after_screen_shot_f = self.get_screen_shot(file_name="/tmp/after.jpg")
+        before_image = before_screen_shot_f.load()
+        after_image  = after_screen_shot_f.load()
+
+        while before_image.eq(after_image):
+            print("INFO: before_image and after_image are eq")
+            time.sleep(5)
+            after_screen_shot_f = self.get_screen_shot(file_name="/tmp/after.jpg")
+            after_image  = after_screen_shot_f.load()
+        print("INFO: before_image and after_image are CHANGED!!!")
+
 
 
 class PytorchService(Service):
@@ -249,6 +299,7 @@ class PytorchService(Service):
 
         #input()
 
+    #WARN: this code is not thread safe!!
     def get_close_position(self, screen_shot_file):
         print("[DEBUG] get_close_position")
         print(screen_shot_file.file_path)
@@ -386,10 +437,14 @@ class GameAdAutomation():
             screen_shot = self.scrcpy_s.get_screen_shot()
             pos = self.pytorch_s.cyclic_ad_button_pusher.push(screen_shot)
             self.scrcpy_s.touch_position(pos)
+            #wait game screen changed with timeout
+            self.scrcpy_s.wait_screen_changed(screen_shot)
 
             screen_shot = self.scrcpy_s.get_screen_shot()
             pos = self.pytorch_s.get_close_position(screen_shot)
             self.scrcpy_s.touch_position(pos)
+            #wait game screen changed with timeout
+            self.scrcpy_s.wait_screen_changed(screen_shot)
 
             #print("INFO: sleep 10")
             #time.sleep(10)
