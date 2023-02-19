@@ -137,6 +137,19 @@ class ScreenShotImage():
 
         return ScreenShotImage(temp)
 
+    #this core retrun True is self and target_screen_shot_image shape is same, and different pixels are over threshold between self and target_screen_shot_image's
+    def eq(self, target_screen_shot_image, threshold=0.7):
+        if self.image.shape != target_screen_shot_image.image.shape:
+            return False
+
+        #give short name
+        this = self.image
+        target = target_screen_shot_image.image
+
+        count = np.count_nonzero(this == target) / this.size
+
+        return count > threshold
+
 class Mp4Information:
     def __init__(self, file_name):
         self.file_name = file_name
@@ -160,8 +173,9 @@ class ScrcpyService(Service):
     def phone(self):
         return os.environ["SCRCPY_PHONE"]
 
-    def get_screen_shot(self):
-        print("TRACE: get_screen_shot")
+    #WARN: this code is not thread safe!!
+    def get_screen_shot(self, file_name="/tmp/gaa_screen_temp.jpg"):
+        print("TRACE: get_screen_shot with %s" % (file_name))
         #TODO: retry is server connection error
         command = ["/usr/local/bin/scrcpy", "--tcpip=" + self.phone(), "--verbosity=verbose", "--record=/tmp/a.mp4"]
         print("DEBUG: %s" % " ".join(command))
@@ -171,12 +185,12 @@ class ScrcpyService(Service):
         time.sleep(5)
         mp4 = Mp4Information(self.TEMP_MP4_PATH)
         print(f"[DEBUG] MP4 = {mp4.get_last_sec()}")
-        command = ["ffmpeg", "-i", "/tmp/a.mp4", "-ss", str(mp4.get_last_sec()) , "-frames:v", "1", "/tmp/gaa_screen_temp.jpg", "-y"]
+        command = ["ffmpeg", "-i", "/tmp/a.mp4", "-ss", str(mp4.get_last_sec()) , "-frames:v", "1", file_name, "-y"]
         #subprocess.check_output(command)
         #TODO: if ffmpeg is failed gaa..jpg should not be created
         subprocess.call(command)
         #TODO: consider is gaa...jpg is not found
-        return ScreenShotFile("/tmp/gaa_screen_temp.jpg")
+        return ScreenShotFile(file_name)
 
     def touch_position(self, pos):
         print("TRACE: touch position")
@@ -198,6 +212,19 @@ class ScrcpyService(Service):
         subprocess.run(command , shell=True)
         time.sleep(5)
         proc.send_signal(SIGINT)
+
+    def wait_screen_changed(self, before_screen_shot_f):
+        after_screen_shot_f = self.get_screen_shot(file_name="/tmp/after.jpg")
+        before_image = before_screen_shot_f.load()
+        after_image  = after_screen_shot_f.load()
+
+        while before_image.eq(after_image):
+            print("INFO: before_image and after_image are eq")
+            time.sleep(5)
+            after_screen_shot_f = self.get_screen_shot(file_name="/tmp/after.jpg")
+            after_image  = after_screen_shot_f.load()
+        print("INFO: before_image and after_image are CHANGED!!!")
+
 
 
 class PytorchService(Service):
@@ -251,6 +278,7 @@ class PytorchService(Service):
 
         #input()
 
+    #WARN: this code is not thread safe!!
     def get_close_position(self, screen_shot_file):
         print("[DEBUG] get_close_position")
         print(screen_shot_file.file_path)
@@ -388,10 +416,14 @@ class GameAdAutomation():
             screen_shot = self.scrcpy_s.get_screen_shot()
             pos = self.pytorch_s.cyclic_ad_button_pusher.push(screen_shot)
             self.scrcpy_s.touch_position(pos)
+            #wait game screen changed with timeout
+            self.scrcpy_s.wait_screen_changed(screen_shot)
 
             screen_shot = self.scrcpy_s.get_screen_shot()
             pos = self.pytorch_s.get_close_position(screen_shot)
             self.scrcpy_s.touch_position(pos)
+            #wait game screen changed with timeout
+            self.scrcpy_s.wait_screen_changed(screen_shot)
 
             #print("INFO: sleep 10")
             #time.sleep(10)
