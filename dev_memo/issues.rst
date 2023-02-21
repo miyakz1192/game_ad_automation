@@ -34,8 +34,6 @@ ResNet34
 gaa_learning_task
 -------------------------
 
-  
-
 
 game_eye
 -----------------
@@ -116,6 +114,22 @@ commit 71c9d416604c6cf26295b20c83120e5835963aba (HEAD -> master, origin/master)
 
 commit 71c9d416604c6cf26295b20c83120e5835963aba (HEAD -> master, origin/master)
 
+2. ResNet34のbin/calc_exp.pyが使い勝手悪すぎ。closeを自動認識してほしい。いまだとcloseに対応するindexを指定することになっているので滅茶不便すぎ。
+　→　完了::
+  
+  commit a9c7a31fe6972bab8c9fb0b92f010634f41c0dc7 (HEAD -> master, origin/master)
+  Author: kazuhiro MIYASHITA <miyakz1192@gmail.com>
+  Date:   Tue Feb 21 15:04:43 2023 +0000
+  
+      go_aux.sh support new bin/calc_exp.py
+  
+  commit 04d1d3f9dae5ef68e65d882c0d6d754ebf777d7a
+  Author: kazuhiro MIYASHITA <miyakz1192@gmail.com>
+  Date:   Tue Feb 21 15:00:50 2023 +0000
+  
+      bin/calc_exp.py support calc_as,calc_target
+  
+
 gaa_learning_task
 -------------------------
 
@@ -129,6 +143,16 @@ gaa_learning_task
   Date:   Sat Feb 11 15:25:56 2023 +0000
   
       select algo support
+
+1. gaa_learning_taskで進捗状況がわからない。リモート実行するログを常に吐き出すようにしたい。learn_batchの結果を逐一出力。以下のURLが参考になるか。
+   https://qiita.com/megmogmog1965/items/5f95b35539ed6b3cfa17
+   →　完了::
+  commit e9e9e82b03ec1b8116d7d3ff273b20ef9c9f301b (HEAD -> master, origin/master)
+  Author: kazuhiro MIYASHITA <miyakz1192@gmail.com>
+  Date:   Tue Feb 21 14:00:09 2023 +0000
+  
+      realtime output of long time script(ex: learn.sh) supported
+  
 
 game_eye
 -----------------

@@ -5,6 +5,103 @@ GAA改造日記
 全体的な人気をすべてこちらに集約することにする。
 すでにバラけたものを集約すること無く、新しい情報からこちらに集約する。
 
+2023/02/21
+==============
+
+resnet_only_try8の結果は悪かった。::
+
+  a@dataaug:~/gaa_learning_task/output/resnet_only_try8$ cat calc_exp_res_close.txt 
+  INFO: gathering class close as 990
+  =====RECORD INFO=====
+  total = 209
+  =====SUM=====
+  0.100000, 990, 196, 93
+  0.200000, 990, 196, 93
+  0.300000, 990, 192, 91
+  0.400000, 990, 179, 85
+  0.500000, 990, 167, 79
+  0.600000, 990, 145, 69
+  0.700000, 990, 121, 57
+  0.800000, 990, 89, 42
+  0.850000, 990, 52, 24
+  0.870000, 990, 41, 19
+  0.880000, 990, 38, 18
+  0.890000, 990, 34, 16
+  0.900000, 990, 31, 14
+  =====SUM(INVERT RAITIO)=====
+  0.100000, 990, 196, 6
+  0.200000, 990, 196, 6
+  0.300000, 990, 192, 8
+  0.400000, 990, 179, 14
+  0.500000, 990, 167, 20
+  0.600000, 990, 145, 30
+  0.700000, 990, 121, 42
+  0.800000, 990, 89, 57
+  0.850000, 990, 52, 75
+  0.870000, 990, 41, 80
+  0.880000, 990, 38, 81
+  0.890000, 990, 34, 83
+  0.900000, 990, 31, 85
+  a@dataaug:~/gaa_learning_task/output/resnet_only_try8$ cat calc_exp_res_not_close
+  cat: calc_exp_res_not_close: No such file or directory
+  a@dataaug:~/gaa_learning_task/output/resnet_only_try8$ cat calc_exp_res_not_close.txt 
+  INFO: gathering class close as 990
+  =====RECORD INFO=====
+  total = 1281
+  =====SUM=====
+  0.100000, 990, 801, 62
+  0.200000, 990, 801, 62
+  0.300000, 990, 797, 62
+  0.400000, 990, 774, 60
+  0.500000, 990, 724, 56
+  0.600000, 990, 678, 52
+  0.700000, 990, 628, 49
+  0.800000, 990, 561, 43
+  0.850000, 990, 498, 38
+  0.870000, 990, 450, 35
+  0.880000, 990, 425, 33
+  0.890000, 990, 400, 31
+  0.900000, 990, 367, 28
+  =====SUM(INVERT RAITIO)=====
+  0.100000, 990, 801, 37
+  0.200000, 990, 801, 37
+  0.300000, 990, 797, 37
+  0.400000, 990, 774, 39
+  0.500000, 990, 724, 43
+  0.600000, 990, 678, 47
+  0.700000, 990, 628, 50
+  0.800000, 990, 561, 56
+  0.850000, 990, 498, 61
+  0.870000, 990, 450, 64
+  0.880000, 990, 425, 66
+  0.890000, 990, 400, 68
+  0.900000, 990, 367, 71
+  a@dataaug:~/gaa_learning_task/output/resnet_only_try8$ 
+
+確信度0.6を採用すると正答率60%、誤答率50%で我慢すれば利用できるかな？っていう程度。
+まだまだだ。
+
+pretrained=Falseにしているのが気にはなるが、epochsを増やしていくと精度もUPしていくことがわかっているので、
+try8の結果を元に学習を積み上げる、すなわち、このままepochsを重ねていくことにする。::
+
+  +    gaa_resnet_34 = GAAResNet34(output_classes=dataset.classes(), verbose=False, pretrained_weight_file="./weights/resnet_only_try8.pth")
+
+  
+ただし、ResNet34とgaa_learning_taskの以下が使い勝手が悪く、改善しないとちょっと不便すぎ。
+
+1. gaa_learning_taskで進捗状況がわからない。リモート実行するログを常に吐き出すようにしたい。
+
+2. ResNet34のbin/calc_exp.pyが使い勝手悪すぎ。closeを自動認識してほしい。いまだとcloseに対応するindexを指定することになっているので滅茶不便すぎ。
+
+上記を改善してから、epochsを重ねようと思う。
+
+というわけで、epochsをかさねます。
+(pretrained=False,epochs=20,try8を引き継ぎ)::
+
+   1990  nohup ./create_task.py --algo resnet34 resnet_only_try9
+
+
+
 2023/02/19
 ============
 
@@ -106,6 +203,25 @@ object_detection_ResNet.rstのトライ7の結果が過去一番良かったこ�
   a@dataaug:~/gaa_learning_task$ 
   a@dataaug:~/gaa_learning_task$ cat nohup.out 
   a@dataaug:~/gaa_learning_task$ 
+
+2023/02/20 
+
+いつまでもresnet34のタスクが終わらない、、、原因はepoch=100にしたせい。
+これをとりあえず、epoch=10にして再度実行。::
+  
+  a@dataaug:~/gaa_learning_task$ date ; nohup ./create_task.py  --algo resnet34 resnet_only_try8 &
+  Mon 20 Feb 2023 01:10:34 PM UTC
+  [1] 424349
+  a@dataaug:~/gaa_learning_task$ nohup: ignoring input and appending output to 'nohup.out'
+  
+  a@dataaug:~/gaa_learning_task$ 
+  a@dataaug:~/gaa_learning_task$ 
+  a@dataaug:~/gaa_learning_task$ ls output/resnet_only_try8/
+  a@dataaug:~/gaa_learning_task$ cat nohup.out 
+  a@dataaug:~/gaa_learning_task$ 
+  
+
+
   
 
 
