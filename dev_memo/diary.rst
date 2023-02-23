@@ -5,6 +5,135 @@ GAA改造日記
 全体的な人気をすべてこちらに集約することにする。
 すでにバラけたものを集約すること無く、新しい情報からこちらに集約する。
 
+2023/02/23
+==============
+
+resnet_only_try9の結果も思わしくない。::
+
+  a@dataaug:~/gaa_learning_task/output/resnet_only_try9/home/a/resset$ cat calc_exp_res_close.txt 
+  dataset size = 100881
+  dataset classses = 1000
+  ### CALC targets as label=close,id=990
+  INFO: ru_closewcobfat,998
+  INFO: closegb,992
+  INFO: ru_closebcow,996
+  INFO: close,990
+  INFO: ru_closewcolg,999
+  INFO: closebcow,991
+  INFO: closewcolg,994
+  INFO: closewcobfat,993
+  INFO: ru_closegb,997
+  INFO: ru_close,995
+  =====RECORD INFO=====
+  total = 209
+  =====SUM=====
+  0.100000, close, 180, 86
+  0.200000, close, 180, 86
+  0.300000, close, 180, 86
+  0.400000, close, 176, 84
+  0.500000, close, 174, 83
+  0.600000, close, 157, 75
+  0.700000, close, 148, 70
+  0.800000, close, 109, 52
+  0.850000, close, 100, 47
+  0.870000, close, 91, 43
+  0.880000, close, 87, 41
+  0.890000, close, 83, 39
+  0.900000, close, 75, 35
+  =====SUM(INVERT RAITIO)=====
+  0.100000, close, 180, 13
+  0.200000, close, 180, 13
+  0.300000, close, 180, 13
+  0.400000, close, 176, 15
+  0.500000, close, 174, 16
+  0.600000, close, 157, 24
+  0.700000, close, 148, 29
+  0.800000, close, 109, 47
+  0.850000, close, 100, 52
+  0.870000, close, 91, 56
+  0.880000, close, 87, 58
+  0.890000, close, 83, 60
+  0.900000, close, 75, 64
+  a@dataaug:~/gaa_learning_task/output/resnet_only_try9/home/a/resset$ cat calc_exp_res_not_close.txt 
+  dataset size = 100881
+  dataset classses = 1000
+  ### CALC targets as label=close,id=990
+  INFO: ru_closewcobfat,998
+  INFO: closegb,992
+  INFO: ru_closebcow,996
+  INFO: close,990
+  INFO: ru_closewcolg,999
+  INFO: closebcow,991
+  INFO: closewcolg,994
+  INFO: closewcobfat,993
+  INFO: ru_closegb,997
+  INFO: ru_close,995
+  =====RECORD INFO=====
+  total = 1281
+  =====SUM=====
+  0.100000, close, 881, 68
+  0.200000, close, 881, 68
+  0.300000, close, 879, 68
+  0.400000, close, 863, 67
+  0.500000, close, 819, 63
+  0.600000, close, 769, 60
+  0.700000, close, 682, 53
+  0.800000, close, 560, 43
+  0.850000, close, 444, 34
+  0.870000, close, 389, 30
+  0.880000, close, 367, 28
+  0.890000, close, 335, 26
+  0.900000, close, 307, 23
+  =====SUM(INVERT RAITIO)=====
+  0.100000, close, 881, 31
+  0.200000, close, 881, 31
+  0.300000, close, 879, 31
+  0.400000, close, 863, 32
+  0.500000, close, 819, 36
+  0.600000, close, 769, 39
+  0.700000, close, 682, 46
+  0.800000, close, 560, 56
+  0.850000, close, 444, 65
+  0.870000, close, 389, 69
+  0.880000, close, 367, 71
+  0.890000, close, 335, 73
+  0.900000, close, 307, 76
+  a@dataaug:~/gaa_learning_task/output/resnet_only_try9/home/a/resset$ 
+
+確信度0.7を採用したら、正答率70%、誤答率53%となる。
+try8よりは正答率が上がった様子。
+
+epochsを積むと精度が上がるっぽいので、続けてみようかなとおもう。
+その前に、この状態でテストプレイをしてみる。
+
+そこそこ上手く動いているっぽい。ときどき、人間でも判別が難しいcloseがでてくるし、その場合は人間がcloseを押してあげる必要があるし、非常に動作が重いので、あまり使い物にはならないが、、、、
+
+ただ、GAAの動作を見ていると、予期しない状態遷移に対する考慮がたりないのか、変なループをすることがある。ただ、何が起きているか画面のログを見てもよくわからないので、ログをとりあえず強化（GAAがどの状態に居るかを表示)することにする。
+
+認識精度の向上も１つの課題だが、GAA本体のロジックも多少作りこんだほうが使い勝手の向上に繋がると考える。例えば、以下。
+
+1. 誤認識が発生して人間が手動でcloseボタンなどを押下して画面を遷移させた場合、GAAが正しい状態を認識できない。
+
+2. closeボタンやad buttonが見つからない場合の異常系の考慮が無い。
+
+3. ミダスの手を押下できない
+
+いずれもバグなんだけどね。1~3を改善すると結構使い物になってくるかもしれない。
+
+1.については状態遷移図をちゃんと設計して取り組めば良さそう。「広告をみるボタン」が出ているシーンを初期状態として、それをGAAの最初に採取する(ユーザに「広告をみるボタン」からプログラムをスタートしてもらう前提付きだが)。そうすれば、すべて初期状態を基点として状態を判別できる。すなわち、GAA状態遷移マシンが認識すべき状態は①　初期状態か、②　広告画面かの２つのため。②　は①　の否定を取れば簡単に認識できる。
+
+上記３件は課題としてGAAにissueを発行。
+
+あと、try9をネタとしてtry10をもう20 epochかます。
+
+ただ、try9で以下の成績であり、これ以上かましてもしょうがねーんじゃないかという気もする。::
+
+      accuracy                           0.93     30265
+       macro avg       0.93      0.93      0.93     30265
+      weighted avg       0.94      0.93      0.93     30265
+
+  
+
 2023/02/21
 ==============
 
