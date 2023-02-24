@@ -5,6 +5,100 @@ GAA改造日記
 全体的な人気をすべてこちらに集約することにする。
 すでにバラけたものを集約すること無く、新しい情報からこちらに集約する。
 
+2023/02/24
+============
+
+try10の評価について::
+
+
+                     precision    recall  f1-score   support
+           990       0.89      1.00      0.94       254
+           991       0.89      1.00      0.94       228
+           992       0.89      1.00      0.94       168
+           993       1.00      0.03      0.06        33
+           994       0.52      0.42      0.47        26
+           995       0.00      0.00      0.00        32
+           996       0.00      0.00      0.00        28
+           997       0.00      0.00      0.00        22
+           998       0.45      1.00      0.62        26
+           999       0.64      0.75      0.69        36
+  
+      accuracy                           0.93     30265
+     macro avg       0.93      0.93      0.93     30265
+  weighted avg       0.94      0.93      0.93     30265
+
+995~997まで相変わらず0だけど、他は数字埋まってきたなんだろう。ただ、macroは変わらない。
+
+ラベルは以下。::
+
+  INFO: ru_closewcobfat,998
+  INFO: closegb,992
+  INFO: ru_closebcow,996
+  INFO: close,990
+  INFO: ru_closewcolg,999
+  INFO: closebcow,991
+  INFO: closewcolg,994
+  INFO: closewcobfat,993
+  INFO: ru_closegb,997
+  INFO: ru_close,995
+
+ru_close,ru_closebcow,ru_closegbあたりのデータがあやしいのか。あとでチェックする
+  
+
+非edgeだとより悪くなっていて、しきい値0.6でrecallが61%だが、FPが59%と同じくらいになってしまった。
+edgeでも非edgeと似た傾向。
+  
+
+try9のテストデータを使った評価について考える。::
+
+                   precision    recall  f1-score   support
+              990       0.90      1.00      0.94       233
+              991       0.88      1.00      0.93       218
+              992       0.87      1.00      0.93       186
+              993       0.00      0.00      0.00        31
+              994       0.00      0.00      0.00        17
+              995       0.00      0.00      0.00        26
+              996       0.00      0.00      0.00        30
+              997       0.00      0.00      0.00        28
+              998       0.40      1.00      0.58        21
+              999       0.65      1.00      0.79        34
+     
+         accuracy                           0.93     30265
+        macro avg       0.93      0.93      0.93     30265
+     weighted avg       0.94      0.93      0.93     30265
+
+990~999がclose系なのだけど、確かに、macro avgを見ると、precision,recallも良く、それに応じてf1-scoreも大変良くなっている。
+しかし、try9でのゲーム画像を使った評価は結構悪い。。
+
+非edgeだと、しきい値0.6でrecallが71%だが、precisionは下がる(FPが48%と高い)。
+edgeだと、しきい値0.6でrecallが75だが、precisionは下がる(FPが60%と高い)。
+しかし、edgeだとrecallが高い傾向にあるため、もうちょっとしきい値を上げて0.7にしてみたら、
+recallが70%になり、FPが53%になる。非edgeと変わんない。
+
+ResNet34だと非edgeでもedgeでもあんまり性能は変わらない気がしてきた。
+
+
+あと、なぜか、993~997までのデータについてprecisionとrecallが0となっているので、かなり怪しい
+
+あと遭遇したエラーで。::
+
+    231         #TODO: retry if connection error
+    232         command = ["scrcpy", "--tcpip=" + self.phone(), "--verbosity=verbose"]
+    233         proc = subprocess.Popen(command)
+    234         print("[DEBUG] wait for %d" % (self.WAIT_TIME_FOR_WIRELESS_DEBUG_DIALOG_VANISHED))
+    235         time.sleep(self.WAIT_TIME_FOR_WIRELESS_DEBUG_DIALOG_VANISHED)
+    236         print("[DEBUG] touch pos!!!")
+    237         command = "echo " + str(int(pos.rect.x+pos.rect.width/2)) + "," + str(int(pos.rect.y+pos.rect.height/2)) + " > " + "mdown_input_pipe"
+    238         subprocess.run(command , shell=True)
+    239         time.sleep(5)
+    240         proc.send_signal(SIGINT)
+
+scrcpyの起動が失敗した場合に、パイプに書き込みに行ってしまって、そこでハング。
+__call_scrcpy_cmd_with_retryを呼び出しておけば良いかもしれないけど、__call_scrcpy_cmd_with_retry
+でリトライアウトした場合にハングしちゃうのでやっぱりよくない
+
+
+
 2023/02/23
 ==============
 
@@ -131,6 +225,22 @@ epochsを積むと精度が上がるっぽいので、続けてみようかな�
       accuracy                           0.93     30265
        macro avg       0.93      0.93      0.93     30265
       weighted avg       0.94      0.93      0.93     30265
+
+try10開始::
+  
+  a@dataaug:~/gaa_learning_task$ nohup ./create_task.py  --algo resnet34 resnet_only_try10 &
+  [1] 1974
+  a@dataaug:~/gaa_learning_task$ nohup: ignoring input and appending output to 'nohup.out'
+  
+  a@dataaug:~/gaa_learning_task$ date
+  Thu 23 Feb 2023 04:16:26 PM UTC
+  a@dataaug:~/gaa_learning_task$ cat nohup.out 
+  INFO: resnet34
+  b'/home/a/dl_image_manager\n'
+  resnet34
+  [resnet34] replacing projects/* data for specified algo
+  a@dataaug:~/gaa_learning_task$ 
+  
 
   
 
