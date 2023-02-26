@@ -5,6 +5,122 @@ GAA改造日記
 全体的な人気をすべてこちらに集約することにする。
 すでにバラけたものを集約すること無く、新しい情報からこちらに集約する。
 
+2023/02/26
+===========
+
+2023/02/24のエントリのtry10の評価で「ru_close,ru_closebcow,ru_closegbあたりのデータがあやしいのか。あとでチェックする」
+とした所のチェックの続きを実施する。
+
+各学習データについてざっと目を通してみた結果。
+
+ru_close.*.jpg→　問題なさげ
+
+ru_closebcow.*.jpg　→　問題なさ気
+
+ru_closegb.*.jpg →　問題なさ気
+
+と、ここまで、各ru*個々については問題なさ気なのだが、奇妙なことに気づいた。
+ru_close,ru_closebcow,ru_closegbはそれぞれ、close,closebcow,closegbとほぼ同じ画像データなのだが、
+ラベルとしては違うものと設定してしまっている。
+
+これでは、モデルは同じclose模様をどちらに仕分ければよいかわからないのではないか、、、まずい！
+要するに、ru_*系というのはすべてそういうことだ(ResNet34であればru系は不要であった!)。
+
+あと、もうひとつ気づいたのは、以下のprojects群については、すべて同じようなclose模様(微妙に違うのだけど大差は無い)だが、
+それぞれ違うラベルに割り当てているということ。これを仮に1つのcloseとしてラベルしたら一体どうなるか？::
+
+  projects/close:
+  projects/closebcow:
+  projects/closegb:
+  projects/closewcobfat:
+  projects/closewcolg:
+
+１つ１つ問題を切り分けしていくために、以下の順番で学習を再実施してみることにする。
+
+1. ru*を除いた学習データで再学習
+
+2. close*を1つのラベルにする。ただし、こちらはすでに作ったprojectsの概念を再利用するために、projectsをマージする操作が必要(issueを発行) 
+
+1.についてまずは実行。以下の条件::
+
+        self.model = resnet34(pretrained=True)
+         pretrained_weight_fileはなし。
+         epochは20
+
+という訳で実行::
+
+   a@dataaug:~/gaa_learning_task$ date ; nohup ./create_task.py  --algo resnet34 resnet_only_try11 &
+   Sun 26 Feb 2023 02:28:31 PM UTC
+   [1] 1066
+   a@dataaug:~/gaa_learning_task$ nohup: ignoring input and appending output to 'nohup.out'
+   
+   a@dataaug:~/gaa_learning_task$ 
+  
+メモ:nohup.outには途中失敗した際のゴミログが先頭あたりに含まれているが気にしないように!
+
+以下、dl_image_managerのissue2について実装のアイデアをメモしておく。
+
+projectsマージ機能のメモ
+----------------------------
+
+各projectをbuildした後、各画像のファイル名をまとめる先のproject名にしてしまえば良いということになる。これはprojectのマージという新しい役目を持った新しいプログラムを作成するのが素直。projectに破壊的な変更を加える。bin/merge_project.py
+
+まず、マージ先のproject名を指定する。これは１つ(例：close)。
+マージ元のproject名を指定する。これは複数(1個以上)。
+
+マージ元の以下を変更する。
+
+1. ファイル名をマージ先のproject名のプレフィックスに変更(この時点でサフィックス、つまり末尾番号については後で述べるので気にしない)
+
+2. annotaion.xmlファイルのファイル名をマージ先のproject名のプレフィックス名に変更する
+(この時点でサフィックス、つまり末尾番号については後で述べるので気にしない)::
+
+  a@dataaug:~/dl_image_manager$ cat data_set/Annotations/closebcow_224.xml
+  <annotation>
+  	<folder>closew</folder>
+  	<filename>closebcow_224.jpg</filename>
+  	<path>/home/a/labelImg/projects/closew/image_extended.jpg</path>
+  	<source>
+  		<database>Unknown</database>
+  	</source>
+  	<size>
+  		<width>38</width>
+  		<height>39</height>
+  		<depth>3</depth>
+  	</size>
+  	<segmented>0</segmented>
+  	<object>
+  		<name>closebcow</name>
+  		<pose>Unspecified</pose>
+  		<truncated>1</truncated>
+  		<difficult>0</difficult>
+  		<bndbox>
+  			<xmin>1</xmin>
+  			<ymin>1</ymin>
+  			<xmax>38</xmax>
+  			<ymax>39</ymax>
+  		</bndbox>
+  	</object>
+  </annotation>
+  a@dataaug:~/dl_image_manager$ 
+
+filenameを変更する(先の1のファイル名に変更するだけ)
+
+object/nameをマージ先のproject名に変更する
+
+実装の具体的なアイデア。
+
+1. マージ元とマージ先の設定を書いたコンフィグを読み込む(マージ先のproject名(1個)と、マージ元のproject名(１個以上)。マージ先はマージ元に含めることはできない(エラー)
+
+2. コンストラクタの処理ではマージ先のproject名を元に、projects/buildに格納されているjpgファイル数をカウントする(count)。next_count = count+1とする。
+
+3. 各マージ元について以下の処理を実施する
+
+3-1. <merge元project名>/build配下のjpgファイルの数を数える
+
+3-2. <merge元project名>/build配下のファイル(jpg/xmlファイルが対)の配列を作成する。(3-1のカウントを活用)
+
+
 2023/02/24
 ============
 

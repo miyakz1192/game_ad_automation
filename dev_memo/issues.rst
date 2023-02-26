@@ -57,6 +57,8 @@ gaa_lib
 dl_image_manager
 ----------------------
 
+2. projectsのマージ操作を実現する機能(diary.rstに実装アイデアのメモあり)
+
 1. master/image.jpgからannotation xmlを自動生成する。例えば、master/image.jpgが300 x 100の画像だとすると、annotationの画像サイズを指定するところもそのサイズだし、ピッタリサイズなのでxmin/ymin,xmax/ymaxの自動的に決定されるので。
 
   
