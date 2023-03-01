@@ -5,6 +5,154 @@ GAA改造日記
 全体的な人気をすべてこちらに集約することにする。
 すでにバラけたものを集約すること無く、新しい情報からこちらに集約する。
 
+2023/03/01
+===========
+
+try11の結果。::
+
+              precision    recall  f1-score   support
+    accuracy                           0.93     30116
+   macro avg       0.94      0.93      0.93     30116
+weighted avg       0.94      0.93      0.93     30116
+
+ということで、相変わらず大変よい結果。
+また、変にrecall/precisionが0になっている部分もなさ気。::
+
+  a@dataaug:~/gaa_learning_task/output/resnet_only_try11/home/a/resset$ cat calc_exp_res_close.txt 
+  dataset size = 100386
+  dataset classses = 995
+  ### CALC targets as label=close,id=990
+  INFO: closegb,992
+  INFO: close,990
+  INFO: closebcow,991
+  INFO: closewcolg,994
+  INFO: closewcobfat,993
+  =====RECORD INFO=====
+  total = 209
+  =====SUM=====
+  0.100000, close, 207, 99
+  0.200000, close, 207, 99
+  0.300000, close, 207, 99
+  0.400000, close, 207, 99
+  0.500000, close, 207, 99
+  0.600000, close, 207, 99
+  0.700000, close, 205, 98
+  0.800000, close, 205, 98
+  0.850000, close, 204, 97
+  0.870000, close, 204, 97
+  0.880000, close, 202, 96
+  0.890000, close, 202, 96
+  0.900000, close, 197, 94
+
+真のcloseに関しては完璧に答えきっている::
+
+  a@dataaug:~/gaa_learning_task/output/resnet_only_try11/home/a/resset$ cat calc_exp_res_not_close.txt 
+  dataset size = 100386
+  dataset classses = 995
+  ### CALC targets as label=close,id=990
+  INFO: closegb,992
+  INFO: close,990
+  INFO: closebcow,991
+  INFO: closewcolg,994
+  INFO: closewcobfat,993
+  =====RECORD INFO=====
+  total = 1281
+  =====SUM=====
+  0.100000, close, 1007, 78
+  0.200000, close, 1007, 78
+  0.300000, close, 1003, 78
+  0.400000, close, 993, 77
+  0.500000, close, 971, 75
+  0.600000, close, 952, 74
+  0.700000, close, 922, 71
+  0.800000, close, 883, 68
+  0.850000, close, 861, 67
+  0.870000, close, 840, 65
+  0.880000, close, 834, 65
+  0.890000, close, 824, 64
+  0.900000, close, 815, 63
+  =====SUM(INVERT RAITIO)=====
+
+FPについては63%となり、よくはないがかなりマシになっている気がする。::
+not edgeだとこんな感じ。::
+
+  a@dataaug:~/gaa_learning_task/output/resnet_only_try11/home/a/resset$ cat calc_exp_res_close_not_edge.txt 
+  dataset size = 100386
+  dataset classses = 995
+  ### CALC targets as label=close,id=990
+  INFO: closegb,992
+  INFO: close,990
+  INFO: closebcow,991
+  INFO: closewcolg,994
+  INFO: closewcobfat,993
+  =====RECORD INFO=====
+  total = 209
+  =====SUM=====
+  0.100000, close, 189, 90
+  0.200000, close, 189, 90
+  0.300000, close, 186, 88
+  0.400000, close, 184, 88
+  0.500000, close, 181, 86
+  0.600000, close, 171, 81
+  0.700000, close, 160, 76
+  0.800000, close, 141, 67
+  0.850000, close, 135, 64
+  0.870000, close, 134, 64
+  0.880000, close, 132, 63
+  0.890000, close, 131, 62
+  0.900000, close, 129, 61
+  =====SUM(INVERT RAITIO)=====
+
+  a@dataaug:~/gaa_learning_task/output/resnet_only_try11/home/a/resset$ cat calc_exp_res_not_close_not_edge.txt 
+  dataset size = 100386
+  dataset classses = 995
+  ### CALC targets as label=close,id=990
+  INFO: closegb,992
+  INFO: close,990
+  INFO: closebcow,991
+  INFO: closewcolg,994
+  INFO: closewcobfat,993
+  =====RECORD INFO=====
+  total = 1281
+  =====SUM=====
+  0.100000, close, 676, 52
+  0.200000, close, 676, 52
+  0.300000, close, 669, 52
+  0.400000, close, 652, 50
+  0.500000, close, 610, 47
+  0.600000, close, 566, 44
+  0.700000, close, 523, 40
+  0.800000, close, 464, 36
+  0.850000, close, 437, 34
+  0.870000, close, 424, 33
+  0.880000, close, 407, 31
+  0.890000, close, 395, 30
+  0.900000, close, 382, 29
+  =====SUM(INVERT RAITIO)=====
+
+not edgeのほうが成績が良さそう。
+確信度0.6を採用すれば、TPも81で、FPは44ということで結構よさ気。
+もう一息な気がする。
+
+精度を上げるためのもう１つの可能性として、マージ機能を実施すると良いかもしれない。
+なので、こちらを進めて精度が向上するかを試してみよう。
+よっしゃ行ってみよう！::
+  
+  a@dataaug:~/gaa_learning_task$ date ; nohup ./create_task.py  --algo resnet34 resnet_only_try12 &
+  Wed 01 Mar 2023 03:38:21 PM UTC
+  [1] 3723
+  a@dataaug:~/gaa_learning_task$ nohup: ignoring input and appending output to 'nohup.out'
+  
+  a@dataaug:~/gaa_learning_task$ 
+  a@dataaug:~/gaa_learning_task$ cat nohup.out 
+  INFO: resnet34
+  b'/home/a/dl_image_manager\n'
+  resnet34
+  [resnet34] replacing projects/* data for specified algo
+  a@dataaug:~/gaa_learning_task$ 
+  
+
+
 2023/02/26
 ===========
 

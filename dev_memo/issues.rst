@@ -57,7 +57,6 @@ gaa_lib
 dl_image_manager
 ----------------------
 
-2. projectsのマージ操作を実現する機能(diary.rstに実装アイデアのメモあり)
 
 1. master/image.jpgからannotation xmlを自動生成する。例えば、master/image.jpgが300 x 100の画像だとすると、annotationの画像サイズを指定するところもそのサイズだし、ピッタリサイズなのでxmin/ymin,xmax/ymaxの自動的に決定されるので。
 
@@ -184,6 +183,39 @@ dl_image_manager
   Date:   Sat Feb 11 15:20:24 2023 +0000
   
       support for changing projects each algo
+
+2. projectsのマージ操作を実現する機能(diary.rstに実装アイデアのメモあり) →　完了::
+  
+  commit 813ba9dc866a0d09342dc16a9cd6cefdfdfe12cb (HEAD -> master, origin/master, origin/HEAD)
+  Author: kazuhiro MIYASHITA <miyakz1192@gmail.com>
+  Date:   Wed Mar 1 15:34:32 2023 +0000
+  
+      bin/merge_project.py in build.sh
+  
+  commit b8af116f5abbd5bbbb8a9c01a34a269e91ca084f
+  Author: kazuhiro MIYASHITA <miyakz1192@gmail.com>
+  Date:   Wed Mar 1 15:32:56 2023 +0000
+  
+      bin/merge_project.py delete src project support
+  
+  commit 59f8822856074463db7dd7e3a0e63fa1bedc0bdc
+  Author: kazuhiro MIYASHITA <miyakz1192@gmail.com>
+  Date:   Wed Mar 1 15:25:32 2023 +0000
+  
+      bin/merge_project.py bug fix and config support
+  
+  commit f601be73b90d37dd73bdfbc46fd57444296d1009
+  Author: kazuhiro MIYASHITA <miyakz1192@gmail.com>
+  Date:   Wed Mar 1 15:11:57 2023 +0000
+  
+      bin/merge_project.py ver 0.5
+  
+  commit 7cb8998ceb2ca38a0d21262114a0275503379792
+  Author: kazuhiro MIYASHITA <miyakz1192@gmail.com>
+  Date:   Wed Mar 1 14:06:42 2023 +0000
+  
+      bin/merge_project.py
+  
 
 
 
