@@ -150,6 +150,13 @@ not edgeのほうが成績が良さそう。
   resnet34
   [resnet34] replacing projects/* data for specified algo
   a@dataaug:~/gaa_learning_task$ 
+
+
+条件は以下。(pretrainedは未使用)::
+
+      gaa_resnet_34 = GAAResNet34(output_classes=dataset.classes(), verbose=False)
+
+んで、epochsは20
   
 
 
