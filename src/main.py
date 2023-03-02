@@ -31,6 +31,17 @@ from matplotlib import pyplot as plt
 
 import re
 
+def big_log(message):
+    print("==========================================")
+    print("==========================================")
+    print(message)
+    print("==========================================")
+    print("==========================================")
+
+def mid_log(message):
+    print("==========================================")
+    print(message)
+    print("==========================================")
 
 
 #necessary environments values
@@ -49,30 +60,30 @@ class Service:
 
     def show(self):
         print("[TRACE] " + self.name + " service configuration")
-        print(self.user())
-        print(self.passwd())
-        print(self.host())
+        #print(self.user())
+        #print(self.passwd())
+        #print(self.host())
 
     def ssh(self, cmd):
         #sshpass -p <passwd> ssh -o StrictHostKeyChecking=no <user>@<host> <cmd>
         command = ["sshpass", "-p" , self.passwd(), "ssh", "-o" , "StrictHostKeyChecking=no" , self.user()+"@"+self.host()] + cmd
-        print("DEBUG: %s" % " ".join(command))
+        #print("DEBUG: %s" % " ".join(command))
         res = subprocess.check_output(command)
-        print("DEBUG: %s" % str(res.decode()))
+        #print("DEBUG: %s" % str(res.decode()))
 
     def scp_upload(self,path_from, path_to): #path_from(local) , path_to(remote)
         # sshpass -p a scp -o StrictHostKeyChecking=no <path_from> <user>@<host>:<path_to>
         command = ["sshpass", "-p" , self.passwd(), "scp", "-o" , "StrictHostKeyChecking=no" , path_from, self.user()+"@"+self.host()+":"+path_to]
-        print("DEBUG: %s" % " ".join(command))
+        #print("DEBUG: %s" % " ".join(command))
         res = subprocess.check_output(command)
-        print("DEBUG: %s" % str(res))
+        #print("DEBUG: %s" % str(res))
 
     def scp_download(self,path_from, path_to): #path_from(remote) , path_to(local)
         # sshpass -p a scp -o StrictHostKeyChecking=no <path_from> <user>@<host>:<path_to>
         command = ["sshpass", "-p" , self.passwd(), "scp", "-o" , "StrictHostKeyChecking=no" , self.user()+"@"+self.host()+":"+path_from, path_to]
-        print("DEBUG: %s" % " ".join(command))
+        #print("DEBUG: %s" % " ".join(command))
         res = subprocess.check_output(command)
-        print("DEBUG: %s" % str(res))
+        #print("DEBUG: %s" % str(res))
 
 
 class ScreenShotFile():
@@ -137,7 +148,7 @@ class ScreenShotImage():
 
         return ScreenShotImage(temp)
 
-    #this core retrun True is self and target_screen_shot_image shape is same, and different pixels are over threshold between self and target_screen_shot_image's
+    #this core retrun True is self and target_screen_shot_image shape is same. return False if different pixels are over threshold between self and target_screen_shot_image's
     def eq(self, target_screen_shot_image, threshold=0.7):
         if self.image.shape != target_screen_shot_image.image.shape:
             return False
@@ -150,7 +161,7 @@ class ScreenShotImage():
 
         return count > threshold
 
-class Mp4File:
+class GAAFile:
     def __init__(self, file_name):
         self.file_name = file_name
 
@@ -160,6 +171,11 @@ class Mp4File:
 
     def exists_file(self):
         return os.path.isfile(self.file_name)
+
+
+class Mp4File(GAAFile):
+    def __init__(self, file_name):
+        super().__init__(file_name)
 
     def get_duration(self):
         #ffprobe -v quiet -print_format json -show_format -show_streams  -i /tmp/a.mp4
@@ -174,6 +190,7 @@ class ScrcpyService(Service):
     TEMP_MP4_PATH = "/tmp/a.mp4"
     WAIT_TIME_FOR_WIRELESS_DEBUG_DIALOG_VANISHED = 15
     RETRY_COUNT_SCRCPY_CMD = 10
+    RETRY_COUNT_CMD        = 10
 
     def __init__(self,name):
         super().__init__(name)
@@ -182,20 +199,21 @@ class ScrcpyService(Service):
         return os.environ["SCRCPY_PHONE"]
 
     def __call_scrcpy_cmd_with_retry(self):
-        command = ["/usr/local/bin/scrcpy", "--tcpip=" + self.phone(), "--verbosity=verbose", "--record=%s" % (self.TEMP_MP4_PATH)]
+        #command = ["/usr/local/bin/scrcpy", "--tcpip=" + self.phone(), "--verbosity=verbose", "--record=%s" % (self.TEMP_MP4_PATH)]
+        command = ["/usr/local/bin/scrcpy", "--tcpip=" + self.phone(), "--record=%s" % (self.TEMP_MP4_PATH)]
 
         for i in range(self.RETRY_COUNT_SCRCPY_CMD):
             mp4 = Mp4File(self.TEMP_MP4_PATH)
             mp4.remove_file()
-            print("DEBUG(%d): %s" % (i, " ".join(command)))
+            #print("DEBUG(%d): %s" % (i, " ".join(command)))
             proc = subprocess.Popen(command)
-            print("INFO: enter sleep")
+            #print("INFO: enter sleep")
             time.sleep(self.WAIT_TIME_FOR_WIRELESS_DEBUG_DIALOG_VANISHED)
             #FIXME: this code is buggy. if process(scrcpy) already done. send_signal send to unexpeced another process!!! only if OS get same PID
-            print("INFO: SIGINT")
+            #print("INFO: SIGINT")
             proc.send_signal(SIGINT)
             if mp4.exists_file() is True:
-                print("INFO: OK")
+                #print("INFO: OK")
                 break
             print("ERROR: mp4 file get failed from scrcpy retry")
 
@@ -205,11 +223,19 @@ class ScrcpyService(Service):
         self.__call_scrcpy_cmd_with_retry()
         time.sleep(5)
         mp4 = Mp4File(self.TEMP_MP4_PATH)
-        print(f"[DEBUG] MP4 = {mp4.get_last_sec()}")
-        command = ["ffmpeg", "-i", self.TEMP_MP4_PATH, "-ss", str(mp4.get_last_sec()) , "-frames:v", "1", file_name, "-y"]
-        #subprocess.check_output(command)
-        #TODO: if ffmpeg is failed gaa..jpg should not be created
-        subprocess.call(command)
+        #print(f"[DEBUG] MP4 = {mp4.get_last_sec()}")
+        jpg_file = GAAFile(file_name)
+        for i in range(self.RETRY_COUNT_CMD):
+            jpg_file.remove_file()
+            command = ["ffmpeg", "-i", self.TEMP_MP4_PATH, "-ss", str(mp4.get_last_sec()) , "-frames:v", "1", file_name, "-y"]
+            #subprocess.check_output(command)
+            #TODO: if ffmpeg is failed gaa..jpg should not be created
+            res = subprocess.call(command)
+            if res == 0 and jpg_file.exists_file() is True:
+                break
+            else:
+                print("ERROR: ffmpeg returned not 0(%d). retry" % (res))
+
         #TODO: consider is gaa...jpg is not found
         return ScreenShotFile(file_name)
 
@@ -220,19 +246,23 @@ class ScrcpyService(Service):
             print("INFO: touch_position called with None. may be touch position will be not found")
             return
 
-        print("TRACE: touch position=%d,%d" % (pos.rect.x, pos.rect.y))
-
-#        #scrcpy --tcpip=192.168.110.178:38665 --verbosity=verbose & sleep 10 ; echo "152,192" > mdown_input_pipe
-        #TODO: retry if connection error
-        command = ["scrcpy", "--tcpip=" + self.phone(), "--verbosity=verbose"]
-        proc = subprocess.Popen(command)
-        print("[DEBUG] wait for %d" % (self.WAIT_TIME_FOR_WIRELESS_DEBUG_DIALOG_VANISHED))
-        time.sleep(self.WAIT_TIME_FOR_WIRELESS_DEBUG_DIALOG_VANISHED)
-        print("[DEBUG] touch pos!!!")
-        command = "echo " + str(int(pos.rect.x+pos.rect.width/2)) + "," + str(int(pos.rect.y+pos.rect.height/2)) + " > " + "mdown_input_pipe"
-        subprocess.run(command , shell=True)
-        time.sleep(5)
-        proc.send_signal(SIGINT)
+        for try_count in range(self.RETRY_COUNT_SCRCPY_CMD):
+            print("TRACE: touch position=%d,%d" % (pos.rect.x, pos.rect.y))
+    #        #scrcpy --tcpip=192.168.110.178:38665 --verbosity=verbose & sleep 10 ; echo "152,192" > mdown_input_pipe
+            #TODO: retry if connection error
+            command = ["scrcpy", "--tcpip=" + self.phone(), "--verbosity=verbose"]
+            proc = subprocess.Popen(command)
+            print("[DEBUG] wait for %d" % (self.WAIT_TIME_FOR_WIRELESS_DEBUG_DIALOG_VANISHED))
+            time.sleep(self.WAIT_TIME_FOR_WIRELESS_DEBUG_DIALOG_VANISHED)
+            if proc.returncode is None: # scrcpy command is still active
+                print("[DEBUG] touch pos!!!")
+                command = "echo " + str(int(pos.rect.x+pos.rect.width/2)) + "," + str(int(pos.rect.y+pos.rect.height/2)) + " > " + "mdown_input_pipe"
+                subprocess.run(command , shell=True)
+                time.sleep(5)
+                proc.send_signal(SIGINT)
+                break
+            else: #scrcpy command already vanished due to some reason
+                print("ERROR: scrcpy already ended retry")
 
     def wait_screen_changed(self, before_screen_shot_f):
         after_screen_shot_f = self.get_screen_shot(file_name="/tmp/after.jpg")
@@ -337,8 +367,8 @@ class PytorchService(Service):
 
         res.sort_by_score()
 
-        print("[DEBUG] DetectionResultContainer res")
-        res.print()
+        #print("[DEBUG] DetectionResultContainer res")
+        #res.print()
 
         self.debug_result_show(screen_shot_image, res)
 
@@ -346,7 +376,7 @@ class PytorchService(Service):
             for i in res.res:
                 #FIXME: this code is buggy
                 if re.match(r'.*close.*', i.label) is not None:
-                    if i.score > 0.7:
+                    if i.score >= 0.99:
                         return i
 
         return None
@@ -369,7 +399,7 @@ class CyclicAdButtonPusher:
         if pos_y > ymax:
             #recalc pos_y
             self.counter = 0
-            return self.__get_next_pos(screen_shot)
+            return self.__get_next_pos(screen_shot_image)
         
         self.counter += 1
         pos_x = self.start_pos[0]
@@ -401,19 +431,19 @@ class CyclicAdButtonPusher:
         res_adbutton = self.pytorch_s.call_predictor(adbutton_f, algo="ssd")
         res.merge(res_adbutton)
         res.sort_by_score()
-        res.print()
+        #res.print()
 
-        #FIXME: to be DRY(Do not Repeat Yourlelf)
+        #FIXME: to be DRY(Do not Repeat Yourself)
         button_res = None
         if len(res.res) > 0:
             temp = list(filter(lambda x: x.label == "adbutton", res.res))
             if len(temp) > 0:
                 button_res =  temp[0]
                 print("INFO: Ad Button info")
-                button_res.print()
+                #button_res.print()
                 self.__window_coordinate_system_to_normal(button_res)
-                print("INFO: __window_coordinate_system_to_normal")
-                button_res.print()
+                #print("INFO: __window_coordinate_system_to_normal")
+                #button_res.print()
                 self.pytorch_s.debug_result_show(screen_shot_image, [button_res], file_name="./adbutton_debug_res.jpg")
                 if button_res.score < 0.1:
                     print("INFO: this ad button ignored due to low score")
@@ -425,29 +455,99 @@ class CyclicAdButtonPusher:
 
 class GameAdAutomation():
 
+    STATE_INITIAL = "state_initial"
+    STATE_AD      = "state_ad"
+
+    RES_POS_NOT_FOUND               = 0
+    RES_TRY_NEXT_AD_BUTTON          = 1
+    RES_RESCAN_CLOSE                = 2
+    RES_SCENE_CHANGED_INITIAL_TO_AD = 3
+    RES_SCENE_CHANGED_AD_TO_INITIAL = 4
+
     def __init__(self):
         self.scrcpy_s = ScrcpyService("scrcpy")
         self.pytorch_s = PytorchService("pytorch")
         self.scrcpy_s.show()
         self.pytorch_s.show()
+        self.state = self.STATE_INITIAL
+
+    def __print_state(self):
+        mid_log("STATE=%s" % self.state)
+
+    def __get_initial_scene(self):
+        big_log("GET INITIAL SCENE")
+        self.initial_screen_shot_file = self.scrcpy_s.get_screen_shot(file_name="/tmp/gaa_initial.jpg")
+
+
+    def __wait_scene_initial_to_ad(self):
+        res = self.__wait_scene_common("WAIT FOR SCENE INITIAL TO AD", False)
+        self.state = self.STATE_AD
+        return res
+
+    def __wait_scene_ad_to_initial(self):
+        res = self.__wait_scene_common("WAIT FOR SCENE AD TO INITIAL", True)
+        self.state = self.STATE_INITIAL
+        return res
+
+    def __wait_scene_common(self, message, finish_cond, try_count=1):
+        for i in range(try_count): 
+            big_log(message)
+            self.__print_state()
+            target_screen_shot_file = self.scrcpy_s.get_screen_shot(file_name="/tmp/gaa_wait_scene_common_target.jpg")
+            initial_image = self.initial_screen_shot_file.load()
+            target_image = target_screen_shot_file.load()
+            if initial_image.eq(target_image) == finish_cond:
+                print("INFO: scene changed!")
+                return True
+
+        return False
+
+    def __push_ad_button(self):
+        big_log("PUSH AD BUTTON")
+        screen_shot = self.scrcpy_s.get_screen_shot()
+        pos = self.pytorch_s.cyclic_ad_button_pusher.push(screen_shot)
+        if pos is None:
+            mid_log("INFO: pos is not found")
+            return self.RES_TRY_NEXT_AD_BUTTON 
+
+        self.scrcpy_s.touch_position(pos)
+        if self.__wait_scene_initial_to_ad() is False:
+            mid_log("INFO: screen not changed. try next ad button")
+            return self.RES_TRY_NEXT_AD_BUTTON
+
+        return self.RES_SCENE_CHANGED_INITIAL_TO_AD
+
+    def __push_close_button(self):
+        big_log("PUSH CLOSE BUTTON")
+        screen_shot = self.scrcpy_s.get_screen_shot()
+        pos = self.pytorch_s.get_close_position(screen_shot)
+        if pos is None:
+            mid_log("INFO: pos is not found")
+            return self.RES_RESCAN_CLOSE
+
+        self.scrcpy_s.touch_position(pos)
+        if self.__wait_scene_ad_to_initial() is False:
+            mid_log("INFO: screen not changed. try scaning close again")
+            return self.RES_RESCAN_CLOSE
+
+        return self.RES_SCENE_CHANGED_AD_TO_INITIAL
     
     def naive_algo(self):
         print("INFO: naive_algo")
+        self.__get_initial_scene()
         while True:
-            screen_shot = self.scrcpy_s.get_screen_shot()
-            pos = self.pytorch_s.cyclic_ad_button_pusher.push(screen_shot)
-            self.scrcpy_s.touch_position(pos)
-            #wait game screen changed with timeout
-            self.scrcpy_s.wait_screen_changed(screen_shot)
+            while True:
+                res = self.__push_ad_button()
+                if res == self.RES_SCENE_CHANGED_INITIAL_TO_AD:
+                    break
 
-            screen_shot = self.scrcpy_s.get_screen_shot()
-            pos = self.pytorch_s.get_close_position(screen_shot)
-            self.scrcpy_s.touch_position(pos)
-            #wait game screen changed with timeout
-            self.scrcpy_s.wait_screen_changed(screen_shot)
+            while True:
+                res = self.__push_close_button()
+                if res == self.RES_SCENE_CHANGED_AD_TO_INITIAL:
+                    break
 
-            #print("INFO: sleep 10")
-            #time.sleep(10)
+            print("INFO: sleep 10")
+            time.sleep(10)
 
 
 def main():
