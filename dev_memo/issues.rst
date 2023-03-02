@@ -11,21 +11,23 @@ GitHubのissuesの機能を使って、GAAの機能コンポ(サービス)ごと
 gaa
 -----
 
-3. lu/ruの切り出し。どうも400 x 400は切り出し過ぎ。誤検出する領域が広がってしまう。このため、SSD/ResNet34への入力サイズは400 x 400にするんだけど、実際の切り出し領域はもう少し、400 x 400の上半分、つまり、400 x 200くらいにしても十分closeが入ると思われる。
+8. closeの認識精度が悪い(間違って検出、検出しない。など）
 
-5. GAA側のimage logging。
+11. 誤認識が発生して人間が手動でcloseボタンなどを押下して画面を遷移させた場合、GAAが正しい状態を認識できない。
+
+12. closeボタンやad buttonが見つからない場合の異常系の考慮が無い。
+
+13. ミダスの手を押下できない
 
 6. UserWarningがうざくて、ログが埋まる
 
-7. 動作が重い。とにかく重い。
-
-8. closeの認識精度が悪い(間違って検出、検出しない。など）
-
-9. No7の軽減策だが、画面の遷移を認識する仕組みを考える。例えば、いまだとadbuttonを押した後、ゲームのほうで広告をロード中とかの理由で広告に遷移しない場合がある。その場合、広告が流れているとGAA側は誤認識して、closeを押しに行こうとするので、変にゲーム画面が遷移する場合がある。このようなケースを防止するために、画面が変わったかどうかを判定する仕組みが必要。たとえば、beforeとafterで画面全体をとっておき、どれくらいの画素数が変わったかで判断する。例えば、50%以上画素が変化した場合は画面が遷移したなどで判定できるようにする。
-
 10. adbuttonの認識をSSDを使わずに固定された座標で対応するようにする(優先度低？今のadbutton認識の精度が悪ければ検討)
 
-11. scrcpyで画面が取れない場合に再度リトライする仕組み
+5. GAA側のimage logging。
+
+7. 動作が重い。とにかく重い。(issue No9の実施によりちょっと様子見)
+
+14.ハングする場合がある(diary.rstの2023/02/24の「あと遭遇したエラーで」を参照)
 
 SSD
 -----
@@ -39,8 +41,6 @@ ResNet34
 
 gaa_learning_task
 -------------------------
-
-  
 
 
 game_eye
@@ -56,6 +56,7 @@ gaa_lib
 
 dl_image_manager
 ----------------------
+
 
 1. master/image.jpgからannotation xmlを自動生成する。例えば、master/image.jpgが300 x 100の画像だとすると、annotationの画像サイズを指定するところもそのサイズだし、ピッタリサイズなのでxmin/ymin,xmax/ymaxの自動的に決定されるので。
 
@@ -79,6 +80,30 @@ gaa
 
 1. (ResNet34?) 確信度0.8以上のものを報告するようにする。→ 完了
 
+3. lu/ruの切り出し。どうも400 x 400は切り出し過ぎ。誤検出する領域が広がってしまう。このため、SSD/ResNet34への入力サイズは400 x 400にするんだけど、実際の切り出し領域はもう少し、400 x 400の上半分、つまり、400 x 200くらいにしても十分closeが入ると思われる。
+   →　完了::
+
+  commit 1e1db1d306dfada1c37e66627a2d9ed4c574c098
+  Author: kazuhiro MIYASHITA <miyakz1192@gmail.com>
+  Date:   Sun Feb 19 14:05:33 2023 +0000
+  
+      extract left/right upper with remain_height
+
+9. No7の軽減策だが、画面の遷移を認識する仕組みを考える。例えば、いまだとadbuttonを押した後、ゲームのほうで広告をロード中とかの理由で広告に遷移しない場合がある。その場合、広告が流れているとGAA側は誤認識して、closeを押しに行こうとするので、変にゲーム画面が遷移する場合がある。このようなケースを防止するために、画面が変わったかどうかを判定する仕組みが必要。たとえば、beforeとafterで画面全体をとっておき、どれくらいの画素数が変わったかで判断する。例えば、50%以上画素が変化した場合は画面が遷移したなどで判定できるようにする。
+　　→　完了::
+  commit f70bb392392337b9550fc453826069eeb4147142 (HEAD -> master)
+  Author: kazuhiro MIYASHITA <miyakz1192@gmail.com>
+  Date:   Sun Feb 19 14:59:20 2023 +0000
+  
+      image eq supported
+
+11. scrcpyで画面が取れない場合に再度リトライする仕組み→　完了::
+  commit 7721d2c89b339e924de88690708a1455f0b0379b (HEAD -> master)
+  Author: kazuhiro MIYASHITA <miyakz1192@gmail.com>
+  Date:   Sun Feb 19 15:51:29 2023 +0000
+  
+      scrcpy failed retry supported
+
 SSD
 -----
 
@@ -98,6 +123,22 @@ commit 71c9d416604c6cf26295b20c83120e5835963aba (HEAD -> master, origin/master)
 
 commit 71c9d416604c6cf26295b20c83120e5835963aba (HEAD -> master, origin/master)
 
+2. ResNet34のbin/calc_exp.pyが使い勝手悪すぎ。closeを自動認識してほしい。いまだとcloseに対応するindexを指定することになっているので滅茶不便すぎ。
+　→　完了::
+  
+  commit a9c7a31fe6972bab8c9fb0b92f010634f41c0dc7 (HEAD -> master, origin/master)
+  Author: kazuhiro MIYASHITA <miyakz1192@gmail.com>
+  Date:   Tue Feb 21 15:04:43 2023 +0000
+  
+      go_aux.sh support new bin/calc_exp.py
+  
+  commit 04d1d3f9dae5ef68e65d882c0d6d754ebf777d7a
+  Author: kazuhiro MIYASHITA <miyakz1192@gmail.com>
+  Date:   Tue Feb 21 15:00:50 2023 +0000
+  
+      bin/calc_exp.py support calc_as,calc_target
+  
+
 gaa_learning_task
 -------------------------
 
@@ -111,6 +152,16 @@ gaa_learning_task
   Date:   Sat Feb 11 15:25:56 2023 +0000
   
       select algo support
+
+1. gaa_learning_taskで進捗状況がわからない。リモート実行するログを常に吐き出すようにしたい。learn_batchの結果を逐一出力。以下のURLが参考になるか。
+   https://qiita.com/megmogmog1965/items/5f95b35539ed6b3cfa17
+   →　完了::
+  commit e9e9e82b03ec1b8116d7d3ff273b20ef9c9f301b (HEAD -> master, origin/master)
+  Author: kazuhiro MIYASHITA <miyakz1192@gmail.com>
+  Date:   Tue Feb 21 14:00:09 2023 +0000
+  
+      realtime output of long time script(ex: learn.sh) supported
+  
 
 game_eye
 -----------------
@@ -132,6 +183,39 @@ dl_image_manager
   Date:   Sat Feb 11 15:20:24 2023 +0000
   
       support for changing projects each algo
+
+2. projectsのマージ操作を実現する機能(diary.rstに実装アイデアのメモあり) →　完了::
+  
+  commit 813ba9dc866a0d09342dc16a9cd6cefdfdfe12cb (HEAD -> master, origin/master, origin/HEAD)
+  Author: kazuhiro MIYASHITA <miyakz1192@gmail.com>
+  Date:   Wed Mar 1 15:34:32 2023 +0000
+  
+      bin/merge_project.py in build.sh
+  
+  commit b8af116f5abbd5bbbb8a9c01a34a269e91ca084f
+  Author: kazuhiro MIYASHITA <miyakz1192@gmail.com>
+  Date:   Wed Mar 1 15:32:56 2023 +0000
+  
+      bin/merge_project.py delete src project support
+  
+  commit 59f8822856074463db7dd7e3a0e63fa1bedc0bdc
+  Author: kazuhiro MIYASHITA <miyakz1192@gmail.com>
+  Date:   Wed Mar 1 15:25:32 2023 +0000
+  
+      bin/merge_project.py bug fix and config support
+  
+  commit f601be73b90d37dd73bdfbc46fd57444296d1009
+  Author: kazuhiro MIYASHITA <miyakz1192@gmail.com>
+  Date:   Wed Mar 1 15:11:57 2023 +0000
+  
+      bin/merge_project.py ver 0.5
+  
+  commit 7cb8998ceb2ca38a0d21262114a0275503379792
+  Author: kazuhiro MIYASHITA <miyakz1192@gmail.com>
+  Date:   Wed Mar 1 14:06:42 2023 +0000
+  
+      bin/merge_project.py
+  
 
 
 

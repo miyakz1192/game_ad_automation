@@ -5,6 +5,613 @@ GAA改造日記
 全体的な人気をすべてこちらに集約することにする。
 すでにバラけたものを集約すること無く、新しい情報からこちらに集約する。
 
+2023/03/01
+===========
+
+try11の結果。::
+
+              precision    recall  f1-score   support
+    accuracy                           0.93     30116
+   macro avg       0.94      0.93      0.93     30116
+weighted avg       0.94      0.93      0.93     30116
+
+ということで、相変わらず大変よい結果。
+また、変にrecall/precisionが0になっている部分もなさ気。::
+
+  a@dataaug:~/gaa_learning_task/output/resnet_only_try11/home/a/resset$ cat calc_exp_res_close.txt 
+  dataset size = 100386
+  dataset classses = 995
+  ### CALC targets as label=close,id=990
+  INFO: closegb,992
+  INFO: close,990
+  INFO: closebcow,991
+  INFO: closewcolg,994
+  INFO: closewcobfat,993
+  =====RECORD INFO=====
+  total = 209
+  =====SUM=====
+  0.100000, close, 207, 99
+  0.200000, close, 207, 99
+  0.300000, close, 207, 99
+  0.400000, close, 207, 99
+  0.500000, close, 207, 99
+  0.600000, close, 207, 99
+  0.700000, close, 205, 98
+  0.800000, close, 205, 98
+  0.850000, close, 204, 97
+  0.870000, close, 204, 97
+  0.880000, close, 202, 96
+  0.890000, close, 202, 96
+  0.900000, close, 197, 94
+
+真のcloseに関しては完璧に答えきっている::
+
+  a@dataaug:~/gaa_learning_task/output/resnet_only_try11/home/a/resset$ cat calc_exp_res_not_close.txt 
+  dataset size = 100386
+  dataset classses = 995
+  ### CALC targets as label=close,id=990
+  INFO: closegb,992
+  INFO: close,990
+  INFO: closebcow,991
+  INFO: closewcolg,994
+  INFO: closewcobfat,993
+  =====RECORD INFO=====
+  total = 1281
+  =====SUM=====
+  0.100000, close, 1007, 78
+  0.200000, close, 1007, 78
+  0.300000, close, 1003, 78
+  0.400000, close, 993, 77
+  0.500000, close, 971, 75
+  0.600000, close, 952, 74
+  0.700000, close, 922, 71
+  0.800000, close, 883, 68
+  0.850000, close, 861, 67
+  0.870000, close, 840, 65
+  0.880000, close, 834, 65
+  0.890000, close, 824, 64
+  0.900000, close, 815, 63
+  =====SUM(INVERT RAITIO)=====
+
+FPについては63%となり、よくはないがかなりマシになっている気がする。::
+not edgeだとこんな感じ。::
+
+  a@dataaug:~/gaa_learning_task/output/resnet_only_try11/home/a/resset$ cat calc_exp_res_close_not_edge.txt 
+  dataset size = 100386
+  dataset classses = 995
+  ### CALC targets as label=close,id=990
+  INFO: closegb,992
+  INFO: close,990
+  INFO: closebcow,991
+  INFO: closewcolg,994
+  INFO: closewcobfat,993
+  =====RECORD INFO=====
+  total = 209
+  =====SUM=====
+  0.100000, close, 189, 90
+  0.200000, close, 189, 90
+  0.300000, close, 186, 88
+  0.400000, close, 184, 88
+  0.500000, close, 181, 86
+  0.600000, close, 171, 81
+  0.700000, close, 160, 76
+  0.800000, close, 141, 67
+  0.850000, close, 135, 64
+  0.870000, close, 134, 64
+  0.880000, close, 132, 63
+  0.890000, close, 131, 62
+  0.900000, close, 129, 61
+  =====SUM(INVERT RAITIO)=====
+
+  a@dataaug:~/gaa_learning_task/output/resnet_only_try11/home/a/resset$ cat calc_exp_res_not_close_not_edge.txt 
+  dataset size = 100386
+  dataset classses = 995
+  ### CALC targets as label=close,id=990
+  INFO: closegb,992
+  INFO: close,990
+  INFO: closebcow,991
+  INFO: closewcolg,994
+  INFO: closewcobfat,993
+  =====RECORD INFO=====
+  total = 1281
+  =====SUM=====
+  0.100000, close, 676, 52
+  0.200000, close, 676, 52
+  0.300000, close, 669, 52
+  0.400000, close, 652, 50
+  0.500000, close, 610, 47
+  0.600000, close, 566, 44
+  0.700000, close, 523, 40
+  0.800000, close, 464, 36
+  0.850000, close, 437, 34
+  0.870000, close, 424, 33
+  0.880000, close, 407, 31
+  0.890000, close, 395, 30
+  0.900000, close, 382, 29
+  =====SUM(INVERT RAITIO)=====
+
+not edgeのほうが成績が良さそう。
+確信度0.6を採用すれば、TPも81で、FPは44ということで結構よさ気。
+もう一息な気がする。
+
+精度を上げるためのもう１つの可能性として、マージ機能を実施すると良いかもしれない。
+なので、こちらを進めて精度が向上するかを試してみよう。
+よっしゃ行ってみよう！::
+  
+  a@dataaug:~/gaa_learning_task$ date ; nohup ./create_task.py  --algo resnet34 resnet_only_try12 &
+  Wed 01 Mar 2023 03:38:21 PM UTC
+  [1] 3723
+  a@dataaug:~/gaa_learning_task$ nohup: ignoring input and appending output to 'nohup.out'
+  
+  a@dataaug:~/gaa_learning_task$ 
+  a@dataaug:~/gaa_learning_task$ cat nohup.out 
+  INFO: resnet34
+  b'/home/a/dl_image_manager\n'
+  resnet34
+  [resnet34] replacing projects/* data for specified algo
+  a@dataaug:~/gaa_learning_task$ 
+
+
+条件は以下。(pretrainedは未使用)::
+
+      gaa_resnet_34 = GAAResNet34(output_classes=dataset.classes(), verbose=False)
+
+んで、epochsは20
+  
+
+
+2023/02/26
+===========
+
+2023/02/24のエントリのtry10の評価で「ru_close,ru_closebcow,ru_closegbあたりのデータがあやしいのか。あとでチェックする」
+とした所のチェックの続きを実施する。
+
+各学習データについてざっと目を通してみた結果。
+
+ru_close.*.jpg→　問題なさげ
+
+ru_closebcow.*.jpg　→　問題なさ気
+
+ru_closegb.*.jpg →　問題なさ気
+
+と、ここまで、各ru*個々については問題なさ気なのだが、奇妙なことに気づいた。
+ru_close,ru_closebcow,ru_closegbはそれぞれ、close,closebcow,closegbとほぼ同じ画像データなのだが、
+ラベルとしては違うものと設定してしまっている。
+
+これでは、モデルは同じclose模様をどちらに仕分ければよいかわからないのではないか、、、まずい！
+要するに、ru_*系というのはすべてそういうことだ(ResNet34であればru系は不要であった!)。
+
+あと、もうひとつ気づいたのは、以下のprojects群については、すべて同じようなclose模様(微妙に違うのだけど大差は無い)だが、
+それぞれ違うラベルに割り当てているということ。これを仮に1つのcloseとしてラベルしたら一体どうなるか？::
+
+  projects/close:
+  projects/closebcow:
+  projects/closegb:
+  projects/closewcobfat:
+  projects/closewcolg:
+
+１つ１つ問題を切り分けしていくために、以下の順番で学習を再実施してみることにする。
+
+1. ru*を除いた学習データで再学習
+
+2. close*を1つのラベルにする。ただし、こちらはすでに作ったprojectsの概念を再利用するために、projectsをマージする操作が必要(issueを発行) 
+
+1.についてまずは実行。以下の条件::
+
+        self.model = resnet34(pretrained=True)
+         pretrained_weight_fileはなし。
+         epochは20
+
+という訳で実行::
+
+   a@dataaug:~/gaa_learning_task$ date ; nohup ./create_task.py  --algo resnet34 resnet_only_try11 &
+   Sun 26 Feb 2023 02:28:31 PM UTC
+   [1] 1066
+   a@dataaug:~/gaa_learning_task$ nohup: ignoring input and appending output to 'nohup.out'
+   
+   a@dataaug:~/gaa_learning_task$ 
+  
+メモ:nohup.outには途中失敗した際のゴミログが先頭あたりに含まれているが気にしないように!
+
+以下、dl_image_managerのissue2について実装のアイデアをメモしておく。
+
+projectsマージ機能のメモ
+----------------------------
+
+各projectをbuildした後、各画像のファイル名をまとめる先のproject名にしてしまえば良いということになる。これはprojectのマージという新しい役目を持った新しいプログラムを作成するのが素直。projectに破壊的な変更を加える。bin/merge_project.py
+
+まず、マージ先のproject名を指定する。これは１つ(例：close)。
+マージ元のproject名を指定する。これは複数(1個以上)。
+
+マージ元の以下を変更する。
+
+1. ファイル名をマージ先のproject名のプレフィックスに変更(この時点でサフィックス、つまり末尾番号については後で述べるので気にしない)
+
+2. annotaion.xmlファイルのファイル名をマージ先のproject名のプレフィックス名に変更する
+(この時点でサフィックス、つまり末尾番号については後で述べるので気にしない)::
+
+  a@dataaug:~/dl_image_manager$ cat data_set/Annotations/closebcow_224.xml
+  <annotation>
+  	<folder>closew</folder>
+  	<filename>closebcow_224.jpg</filename>
+  	<path>/home/a/labelImg/projects/closew/image_extended.jpg</path>
+  	<source>
+  		<database>Unknown</database>
+  	</source>
+  	<size>
+  		<width>38</width>
+  		<height>39</height>
+  		<depth>3</depth>
+  	</size>
+  	<segmented>0</segmented>
+  	<object>
+  		<name>closebcow</name>
+  		<pose>Unspecified</pose>
+  		<truncated>1</truncated>
+  		<difficult>0</difficult>
+  		<bndbox>
+  			<xmin>1</xmin>
+  			<ymin>1</ymin>
+  			<xmax>38</xmax>
+  			<ymax>39</ymax>
+  		</bndbox>
+  	</object>
+  </annotation>
+  a@dataaug:~/dl_image_manager$ 
+
+filenameを変更する(先の1のファイル名に変更するだけ)
+
+object/nameをマージ先のproject名に変更する
+
+実装の具体的なアイデア。
+
+1. マージ元とマージ先の設定を書いたコンフィグを読み込む(マージ先のproject名(1個)と、マージ元のproject名(１個以上)。マージ先はマージ元に含めることはできない(エラー)
+
+2. コンストラクタの処理ではマージ先のproject名を元に、projects/buildに格納されているjpgファイル数をカウントする(count)。next_count = count+1とする。
+
+3. 各マージ元について以下の処理を実施する
+
+3-1. <merge元project名>/build配下のjpgファイルの数を数える
+
+3-2. <merge元project名>/build配下のファイル(jpg/xmlファイルが対)の配列を作成する。(3-1のカウントを活用)
+
+
+2023/02/24
+============
+
+try10の評価について::
+
+
+                     precision    recall  f1-score   support
+           990       0.89      1.00      0.94       254
+           991       0.89      1.00      0.94       228
+           992       0.89      1.00      0.94       168
+           993       1.00      0.03      0.06        33
+           994       0.52      0.42      0.47        26
+           995       0.00      0.00      0.00        32
+           996       0.00      0.00      0.00        28
+           997       0.00      0.00      0.00        22
+           998       0.45      1.00      0.62        26
+           999       0.64      0.75      0.69        36
+  
+      accuracy                           0.93     30265
+     macro avg       0.93      0.93      0.93     30265
+  weighted avg       0.94      0.93      0.93     30265
+
+995~997まで相変わらず0だけど、他は数字埋まってきたなんだろう。ただ、macroは変わらない。
+
+ラベルは以下。::
+
+  INFO: ru_closewcobfat,998
+  INFO: closegb,992
+  INFO: ru_closebcow,996
+  INFO: close,990
+  INFO: ru_closewcolg,999
+  INFO: closebcow,991
+  INFO: closewcolg,994
+  INFO: closewcobfat,993
+  INFO: ru_closegb,997
+  INFO: ru_close,995
+
+ru_close,ru_closebcow,ru_closegbあたりのデータがあやしいのか。あとでチェックする
+  
+
+非edgeだとより悪くなっていて、しきい値0.6でrecallが61%だが、FPが59%と同じくらいになってしまった。
+edgeでも非edgeと似た傾向。
+  
+
+try9のテストデータを使った評価について考える。::
+
+                   precision    recall  f1-score   support
+              990       0.90      1.00      0.94       233
+              991       0.88      1.00      0.93       218
+              992       0.87      1.00      0.93       186
+              993       0.00      0.00      0.00        31
+              994       0.00      0.00      0.00        17
+              995       0.00      0.00      0.00        26
+              996       0.00      0.00      0.00        30
+              997       0.00      0.00      0.00        28
+              998       0.40      1.00      0.58        21
+              999       0.65      1.00      0.79        34
+     
+         accuracy                           0.93     30265
+        macro avg       0.93      0.93      0.93     30265
+     weighted avg       0.94      0.93      0.93     30265
+
+990~999がclose系なのだけど、確かに、macro avgを見ると、precision,recallも良く、それに応じてf1-scoreも大変良くなっている。
+しかし、try9でのゲーム画像を使った評価は結構悪い。。
+
+非edgeだと、しきい値0.6でrecallが71%だが、precisionは下がる(FPが48%と高い)。
+edgeだと、しきい値0.6でrecallが75だが、precisionは下がる(FPが60%と高い)。
+しかし、edgeだとrecallが高い傾向にあるため、もうちょっとしきい値を上げて0.7にしてみたら、
+recallが70%になり、FPが53%になる。非edgeと変わんない。
+
+ResNet34だと非edgeでもedgeでもあんまり性能は変わらない気がしてきた。
+
+
+あと、なぜか、993~997までのデータについてprecisionとrecallが0となっているので、かなり怪しい
+
+あと遭遇したエラーで。::
+
+    231         #TODO: retry if connection error
+    232         command = ["scrcpy", "--tcpip=" + self.phone(), "--verbosity=verbose"]
+    233         proc = subprocess.Popen(command)
+    234         print("[DEBUG] wait for %d" % (self.WAIT_TIME_FOR_WIRELESS_DEBUG_DIALOG_VANISHED))
+    235         time.sleep(self.WAIT_TIME_FOR_WIRELESS_DEBUG_DIALOG_VANISHED)
+    236         print("[DEBUG] touch pos!!!")
+    237         command = "echo " + str(int(pos.rect.x+pos.rect.width/2)) + "," + str(int(pos.rect.y+pos.rect.height/2)) + " > " + "mdown_input_pipe"
+    238         subprocess.run(command , shell=True)
+    239         time.sleep(5)
+    240         proc.send_signal(SIGINT)
+
+scrcpyの起動が失敗した場合に、パイプに書き込みに行ってしまって、そこでハング。
+__call_scrcpy_cmd_with_retryを呼び出しておけば良いかもしれないけど、__call_scrcpy_cmd_with_retry
+でリトライアウトした場合にハングしちゃうのでやっぱりよくない
+
+
+
+2023/02/23
+==============
+
+resnet_only_try9の結果も思わしくない。::
+
+  a@dataaug:~/gaa_learning_task/output/resnet_only_try9/home/a/resset$ cat calc_exp_res_close.txt 
+  dataset size = 100881
+  dataset classses = 1000
+  ### CALC targets as label=close,id=990
+  INFO: ru_closewcobfat,998
+  INFO: closegb,992
+  INFO: ru_closebcow,996
+  INFO: close,990
+  INFO: ru_closewcolg,999
+  INFO: closebcow,991
+  INFO: closewcolg,994
+  INFO: closewcobfat,993
+  INFO: ru_closegb,997
+  INFO: ru_close,995
+  =====RECORD INFO=====
+  total = 209
+  =====SUM=====
+  0.100000, close, 180, 86
+  0.200000, close, 180, 86
+  0.300000, close, 180, 86
+  0.400000, close, 176, 84
+  0.500000, close, 174, 83
+  0.600000, close, 157, 75
+  0.700000, close, 148, 70
+  0.800000, close, 109, 52
+  0.850000, close, 100, 47
+  0.870000, close, 91, 43
+  0.880000, close, 87, 41
+  0.890000, close, 83, 39
+  0.900000, close, 75, 35
+  =====SUM(INVERT RAITIO)=====
+  0.100000, close, 180, 13
+  0.200000, close, 180, 13
+  0.300000, close, 180, 13
+  0.400000, close, 176, 15
+  0.500000, close, 174, 16
+  0.600000, close, 157, 24
+  0.700000, close, 148, 29
+  0.800000, close, 109, 47
+  0.850000, close, 100, 52
+  0.870000, close, 91, 56
+  0.880000, close, 87, 58
+  0.890000, close, 83, 60
+  0.900000, close, 75, 64
+  a@dataaug:~/gaa_learning_task/output/resnet_only_try9/home/a/resset$ cat calc_exp_res_not_close.txt 
+  dataset size = 100881
+  dataset classses = 1000
+  ### CALC targets as label=close,id=990
+  INFO: ru_closewcobfat,998
+  INFO: closegb,992
+  INFO: ru_closebcow,996
+  INFO: close,990
+  INFO: ru_closewcolg,999
+  INFO: closebcow,991
+  INFO: closewcolg,994
+  INFO: closewcobfat,993
+  INFO: ru_closegb,997
+  INFO: ru_close,995
+  =====RECORD INFO=====
+  total = 1281
+  =====SUM=====
+  0.100000, close, 881, 68
+  0.200000, close, 881, 68
+  0.300000, close, 879, 68
+  0.400000, close, 863, 67
+  0.500000, close, 819, 63
+  0.600000, close, 769, 60
+  0.700000, close, 682, 53
+  0.800000, close, 560, 43
+  0.850000, close, 444, 34
+  0.870000, close, 389, 30
+  0.880000, close, 367, 28
+  0.890000, close, 335, 26
+  0.900000, close, 307, 23
+  =====SUM(INVERT RAITIO)=====
+  0.100000, close, 881, 31
+  0.200000, close, 881, 31
+  0.300000, close, 879, 31
+  0.400000, close, 863, 32
+  0.500000, close, 819, 36
+  0.600000, close, 769, 39
+  0.700000, close, 682, 46
+  0.800000, close, 560, 56
+  0.850000, close, 444, 65
+  0.870000, close, 389, 69
+  0.880000, close, 367, 71
+  0.890000, close, 335, 73
+  0.900000, close, 307, 76
+  a@dataaug:~/gaa_learning_task/output/resnet_only_try9/home/a/resset$ 
+
+確信度0.7を採用したら、正答率70%、誤答率53%となる。
+try8よりは正答率が上がった様子。
+
+epochsを積むと精度が上がるっぽいので、続けてみようかなとおもう。
+その前に、この状態でテストプレイをしてみる。
+
+そこそこ上手く動いているっぽい。ときどき、人間でも判別が難しいcloseがでてくるし、その場合は人間がcloseを押してあげる必要があるし、非常に動作が重いので、あまり使い物にはならないが、、、、
+
+ただ、GAAの動作を見ていると、予期しない状態遷移に対する考慮がたりないのか、変なループをすることがある。ただ、何が起きているか画面のログを見てもよくわからないので、ログをとりあえず強化（GAAがどの状態に居るかを表示)することにする。
+
+認識精度の向上も１つの課題だが、GAA本体のロジックも多少作りこんだほうが使い勝手の向上に繋がると考える。例えば、以下。
+
+1. 誤認識が発生して人間が手動でcloseボタンなどを押下して画面を遷移させた場合、GAAが正しい状態を認識できない。
+
+2. closeボタンやad buttonが見つからない場合の異常系の考慮が無い。
+
+3. ミダスの手を押下できない
+
+いずれもバグなんだけどね。1~3を改善すると結構使い物になってくるかもしれない。
+
+1.については状態遷移図をちゃんと設計して取り組めば良さそう。「広告をみるボタン」が出ているシーンを初期状態として、それをGAAの最初に採取する(ユーザに「広告をみるボタン」からプログラムをスタートしてもらう前提付きだが)。そうすれば、すべて初期状態を基点として状態を判別できる。すなわち、GAA状態遷移マシンが認識すべき状態は①　初期状態か、②　広告画面かの２つのため。②　は①　の否定を取れば簡単に認識できる。
+
+上記３件は課題としてGAAにissueを発行。
+
+あと、try9をネタとしてtry10をもう20 epochかます。
+
+ただ、try9で以下の成績であり、これ以上かましてもしょうがねーんじゃないかという気もする。::
+
+      accuracy                           0.93     30265
+       macro avg       0.93      0.93      0.93     30265
+      weighted avg       0.94      0.93      0.93     30265
+
+try10開始::
+  
+  a@dataaug:~/gaa_learning_task$ nohup ./create_task.py  --algo resnet34 resnet_only_try10 &
+  [1] 1974
+  a@dataaug:~/gaa_learning_task$ nohup: ignoring input and appending output to 'nohup.out'
+  
+  a@dataaug:~/gaa_learning_task$ date
+  Thu 23 Feb 2023 04:16:26 PM UTC
+  a@dataaug:~/gaa_learning_task$ cat nohup.out 
+  INFO: resnet34
+  b'/home/a/dl_image_manager\n'
+  resnet34
+  [resnet34] replacing projects/* data for specified algo
+  a@dataaug:~/gaa_learning_task$ 
+  
+
+  
+
+2023/02/21
+==============
+
+resnet_only_try8の結果は悪かった。::
+
+  a@dataaug:~/gaa_learning_task/output/resnet_only_try8$ cat calc_exp_res_close.txt 
+  INFO: gathering class close as 990
+  =====RECORD INFO=====
+  total = 209
+  =====SUM=====
+  0.100000, 990, 196, 93
+  0.200000, 990, 196, 93
+  0.300000, 990, 192, 91
+  0.400000, 990, 179, 85
+  0.500000, 990, 167, 79
+  0.600000, 990, 145, 69
+  0.700000, 990, 121, 57
+  0.800000, 990, 89, 42
+  0.850000, 990, 52, 24
+  0.870000, 990, 41, 19
+  0.880000, 990, 38, 18
+  0.890000, 990, 34, 16
+  0.900000, 990, 31, 14
+  =====SUM(INVERT RAITIO)=====
+  0.100000, 990, 196, 6
+  0.200000, 990, 196, 6
+  0.300000, 990, 192, 8
+  0.400000, 990, 179, 14
+  0.500000, 990, 167, 20
+  0.600000, 990, 145, 30
+  0.700000, 990, 121, 42
+  0.800000, 990, 89, 57
+  0.850000, 990, 52, 75
+  0.870000, 990, 41, 80
+  0.880000, 990, 38, 81
+  0.890000, 990, 34, 83
+  0.900000, 990, 31, 85
+  a@dataaug:~/gaa_learning_task/output/resnet_only_try8$ cat calc_exp_res_not_close
+  cat: calc_exp_res_not_close: No such file or directory
+  a@dataaug:~/gaa_learning_task/output/resnet_only_try8$ cat calc_exp_res_not_close.txt 
+  INFO: gathering class close as 990
+  =====RECORD INFO=====
+  total = 1281
+  =====SUM=====
+  0.100000, 990, 801, 62
+  0.200000, 990, 801, 62
+  0.300000, 990, 797, 62
+  0.400000, 990, 774, 60
+  0.500000, 990, 724, 56
+  0.600000, 990, 678, 52
+  0.700000, 990, 628, 49
+  0.800000, 990, 561, 43
+  0.850000, 990, 498, 38
+  0.870000, 990, 450, 35
+  0.880000, 990, 425, 33
+  0.890000, 990, 400, 31
+  0.900000, 990, 367, 28
+  =====SUM(INVERT RAITIO)=====
+  0.100000, 990, 801, 37
+  0.200000, 990, 801, 37
+  0.300000, 990, 797, 37
+  0.400000, 990, 774, 39
+  0.500000, 990, 724, 43
+  0.600000, 990, 678, 47
+  0.700000, 990, 628, 50
+  0.800000, 990, 561, 56
+  0.850000, 990, 498, 61
+  0.870000, 990, 450, 64
+  0.880000, 990, 425, 66
+  0.890000, 990, 400, 68
+  0.900000, 990, 367, 71
+  a@dataaug:~/gaa_learning_task/output/resnet_only_try8$ 
+
+確信度0.6を採用すると正答率60%、誤答率50%で我慢すれば利用できるかな？っていう程度。
+まだまだだ。
+
+pretrained=Falseにしているのが気にはなるが、epochsを増やしていくと精度もUPしていくことがわかっているので、
+try8の結果を元に学習を積み上げる、すなわち、このままepochsを重ねていくことにする。::
+
+  +    gaa_resnet_34 = GAAResNet34(output_classes=dataset.classes(), verbose=False, pretrained_weight_file="./weights/resnet_only_try8.pth")
+
+  
+ただし、ResNet34とgaa_learning_taskの以下が使い勝手が悪く、改善しないとちょっと不便すぎ。
+
+1. gaa_learning_taskで進捗状況がわからない。リモート実行するログを常に吐き出すようにしたい。
+
+2. ResNet34のbin/calc_exp.pyが使い勝手悪すぎ。closeを自動認識してほしい。いまだとcloseに対応するindexを指定することになっているので滅茶不便すぎ。
+
+上記を改善してから、epochsを重ねようと思う。
+
+というわけで、epochsをかさねます。
+(pretrained=False,epochs=20,try8を引き継ぎ)::
+
+   1990  nohup ./create_task.py --algo resnet34 resnet_only_try9
+
+
+
 2023/02/19
 ============
 
@@ -22,7 +629,110 @@ object_detection_ResNet.rstのトライ7の結果が過去一番良かったこ�
 
 ということで、トライ7の条件でやると、トライ7の結果以上のコトは得られないため、トライ7の上手く行った時の条件(edge加工で認識)は変えずに、上記の検討が残っている条件を変えて試してみる。
 
-まず、1についてoutput_sizeを1000にする.
+まず、1についてoutput_sizeを1000にする.::
+
+  a@pytorch:~/resset$ git diff core/resnet34.py
+  diff --git a/core/resnet34.py b/core/resnet34.py
+  index eab3ff3..6280c8b 100644
+  --- a/core/resnet34.py
+  +++ b/core/resnet34.py
+  @@ -23,8 +23,9 @@ from gaa import *
+   from single import *
+   
+   class GAAResNet34():
+  -    def __init__(self, output_classes=None, train_ratio=0.7, batch_size=32, epochs=5, verbose=True):
+  -        self.model = resnet34(pretrained=True)
+  +    def __init__(self, output_classes=None, train_ratio=0.7, batch_size=32, epochs=5, verbose=True, pretrained_weight_file=None):
+  +        #self.model = resnet34(pretrained=True)
+  +        self.model = resnet34(pretrained=False)
+           #self.model.fc = nn.Linear(512,35)
+           self.model.fc = nn.Linear(512,output_classes)
+           
+  @@ -32,6 +33,11 @@ class GAAResNet34():
+           self.model.cpu()
+           self.verbose = verbose
+   
+  +        self.best_avg_loss = 100000000000000 #tekitou
+  +
+  +        if pretrained_weight_file is not None:
+  +            self.load(pretrained_weight_file)
+  +
+       def train_aux(self,epoch):
+           total_loss = 0
+           total_size = 0
+  @@ -54,10 +60,17 @@ class GAAResNet34():
+                   print("DEBUG: time=%d, batch_idx=%d, len(data)=%d, batch_idx * len(data)=%d" % (int(e_t-s_t),batch_idx, len(data), batch_idx*len(data)))
+               if batch_idx % report == 0:
+                   now = datetime.datetime.now()
+  +                avg_loss = total_loss / total_size
+                   print('[{}] Train Epoch: {} [{}/{} ({:.0f}%)]\tAverage loss: {:.6f}'.format(
+                       now,
+                       epoch, batch_idx * len(data), len(self.train_loader.dataset),
+  -                    100. * batch_idx * len(data) / len(self.train_loader.dataset), total_loss / total_size))
+  +                    100. * batch_idx * len(data) / len(self.train_loader.dataset), avg_loss))
+  +
+  +                if self.best_avg_loss > avg_loss:
+  +                    print("BEST LOSS UPDATED!!!")
+  +                    self.best_avg_loss = avg_loss
+  +                    self.save("./weights/best_weight.pth")
+  +
+   
+               sys.stdout.flush()
+   
+  @@ -73,6 +86,8 @@ class GAAResNet34():
+   
+   
+       def train(self, dataset, train_ratio=0.7, batch_size=32, epochs=5):
+  +        print("INFO: train start. show model info")
+  +        print(self.model)
+           self.dataset = dataset
+           self.batch_size = batch_size
+           self.epochs = epochs
+  @@ -157,9 +172,10 @@ if __name__ == "__main__":
+       print("dataset size = %d" % (len(dataset)))
+       print("dataset classses = %d" % (dataset.classes()))
+   
+  +    #gaa_resnet_34 = GAAResNet34(output_classes=dataset.classes(), verbose=False, pretrained_weight_file="./weights/resnet_only_try6.pth")
+       gaa_resnet_34 = GAAResNet34(output_classes=dataset.classes(), verbose=False)
+       if sys.argv[1] == "train":
+  -        gaa_resnet_34.train(dataset,epochs=5)
+  +        gaa_resnet_34.train(dataset,epochs=100)
+           gaa_resnet_34.save("./weights/best_weight.pth")
+       elif sys.argv[1] == "test":
+           gaa_resnet_34.load("./weights/best_weight.pth")
+  a@pytorch:~/resset$ 
+
+前の重みを一旦引き継いでいない点に注意！(引き継いでいたせいで一回try8が失敗)。そして以下で再試行
+
+::
+
+  a@dataaug:~/gaa_learning_task$ nohup ./create_task.py  --algo resnet34 resnet_only_try8 &
+  [1] 212176
+  a@dataaug:~/gaa_learning_task$ nohup: ignoring input and appending output to 'nohup.out'
+  
+  a@dataaug:~/gaa_learning_task$ 
+  a@dataaug:~/gaa_learning_task$ cat nohup.out 
+  a@dataaug:~/gaa_learning_task$ 
+
+2023/02/20 
+
+いつまでもresnet34のタスクが終わらない、、、原因はepoch=100にしたせい。
+これをとりあえず、epoch=10にして再度実行。::
+  
+  a@dataaug:~/gaa_learning_task$ date ; nohup ./create_task.py  --algo resnet34 resnet_only_try8 &
+  Mon 20 Feb 2023 01:10:34 PM UTC
+  [1] 424349
+  a@dataaug:~/gaa_learning_task$ nohup: ignoring input and appending output to 'nohup.out'
+  
+  a@dataaug:~/gaa_learning_task$ 
+  a@dataaug:~/gaa_learning_task$ 
+  a@dataaug:~/gaa_learning_task$ ls output/resnet_only_try8/
+  a@dataaug:~/gaa_learning_task$ cat nohup.out 
+  a@dataaug:~/gaa_learning_task$ 
+  
+
+
+  
 
 
 2023/02/13-02/15
