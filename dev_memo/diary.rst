@@ -5,6 +5,189 @@ GAA改造日記
 全体的な人気をすべてこちらに集約することにする。
 すでにバラけたものを集約すること無く、新しい情報からこちらに集約する。
 
+2023/03/02
+============
+
+try12の結果::
+
+                 precision    recall  f1-score   support
+       accuracy                           0.93     30116
+      macro avg       0.94      0.93      0.93     30116
+   weighted avg       0.94      0.93      0.94     30116
+
+edge化画像の認識結果::
+
+  a@dataaug:~/gaa_learning_task/output/resnet_only_try12/home/a/resset$ cat calc_exp_res_close.txt 
+  dataset size = 100386
+  dataset classses = 991
+  ### CALC targets as label=close,id=990
+  INFO: close,990
+  =====RECORD INFO=====
+  total = 209
+  =====SUM=====
+  0.100000, close, 209, 100
+  0.200000, close, 209, 100
+  0.300000, close, 209, 100
+  0.400000, close, 209, 100
+  0.500000, close, 209, 100
+  0.600000, close, 209, 100
+  0.700000, close, 209, 100
+  0.800000, close, 209, 100
+  0.850000, close, 209, 100
+  0.870000, close, 209, 100
+  0.880000, close, 209, 100
+  0.890000, close, 209, 100
+  0.900000, close, 209, 100
+  1.000000, close, 127, 60
+  =====SUM(INVERT RAITIO)=====
+
+not close::
+
+  a@dataaug:~/gaa_learning_task/output/resnet_only_try12/home/a/resset$ cat calc_exp_res_not_close.txt 
+  dataset size = 100386
+  dataset classses = 991
+  ### CALC targets as label=close,id=990
+  INFO: close,990
+  =====RECORD INFO=====
+  total = 1281
+  =====SUM=====
+  0.100000, close, 973, 75
+  0.200000, close, 973, 75
+  0.300000, close, 972, 75
+  0.400000, close, 965, 75
+  0.500000, close, 943, 73
+  0.600000, close, 913, 71
+  0.700000, close, 879, 68
+  0.800000, close, 848, 66
+  0.850000, close, 834, 65
+  0.870000, close, 819, 63
+  0.880000, close, 814, 63
+  0.890000, close, 805, 62
+  0.900000, close, 801, 62
+  1.000000, close, 17, 1
+  =====SUM(INVERT RAITIO)=====
+
+非edge化画像::
+
+  a@dataaug:~/gaa_learning_task/output/resnet_only_try12/home/a/resset$ cat calc_exp_res_close_not_edge.txt 
+  dataset size = 100386
+  dataset classses = 991
+  ### CALC targets as label=close,id=990
+  INFO: close,990
+  =====RECORD INFO=====
+  total = 209
+  =====SUM=====
+  0.100000, close, 205, 98
+  0.200000, close, 205, 98
+  0.300000, close, 205, 98
+  0.400000, close, 205, 98
+  0.500000, close, 205, 98
+  0.600000, close, 204, 97
+  0.700000, close, 203, 97
+  0.800000, close, 203, 97
+  0.850000, close, 201, 96
+  0.870000, close, 201, 96
+  0.880000, close, 201, 96
+  0.890000, close, 201, 96
+  0.900000, close, 201, 96
+  1.000000, close, 157, 75
+  =====SUM(INVERT RAITIO)=====
+
+
+not close::
+
+  a@dataaug:~/gaa_learning_task/output/resnet_only_try12/home/a/resset$ cat calc_exp_res_not_close_not_edge.txt 
+  dataset size = 100386
+  dataset classses = 991
+  ### CALC targets as label=close,id=990
+  INFO: close,990
+  =====RECORD INFO=====
+  total = 1281
+  =====SUM=====
+  0.100000, close, 756, 59
+  0.200000, close, 756, 59
+  0.300000, close, 754, 58
+  0.400000, close, 744, 58
+  0.500000, close, 733, 57
+  0.600000, close, 718, 56
+  0.700000, close, 693, 54
+  0.800000, close, 674, 52
+  0.850000, close, 660, 51
+  0.870000, close, 654, 51
+  0.880000, close, 650, 50
+  0.890000, close, 647, 50
+  0.900000, close, 643, 50
+  1.000000, close, 74, 5
+  =====SUM(INVERT RAITIO)=====
+
+結構優秀。確信度0.9~1.0あたりでベストポイントが探せそう。どうも、0.99位が良さそう。::
+
+  a@dataaug:~/gaa_learning_task/output/resnet_only_try12/re_calc$ cat calc_exp_res_close_not_edge.txt 
+  dataset size = 100386
+  dataset classses = 991
+  ### CALC targets as label=close,id=990
+  INFO: close,990
+  =====RECORD INFO=====
+  total = 209
+  =====SUM=====
+  0.100000, close, 205, 98
+  0.200000, close, 205, 98
+  0.300000, close, 205, 98
+  0.400000, close, 205, 98
+  0.500000, close, 205, 98
+  0.600000, close, 204, 97
+  0.700000, close, 203, 97
+  0.800000, close, 203, 97
+  0.850000, close, 201, 96
+  0.870000, close, 201, 96
+  0.880000, close, 201, 96
+  0.890000, close, 201, 96
+  0.900000, close, 201, 96
+  0.910000, close, 201, 96
+  0.930000, close, 201, 96
+  0.950000, close, 201, 96
+  0.970000, close, 199, 95
+  0.980000, close, 198, 94
+  0.990000, close, 197, 94
+  1.000000, close, 157, 75
+  =====SUM(INVERT RAITIO)=====
+  
+  a@dataaug:~/gaa_learning_task/output/resnet_only_try12/re_calc$ cat calc_exp_res_not_close_not_edge.txt 
+  dataset size = 100386
+  dataset classses = 991
+  ### CALC targets as label=close,id=990
+  INFO: close,990
+  =====RECORD INFO=====
+  total = 1281
+  =====SUM=====
+  0.100000, close, 756, 59
+  0.200000, close, 756, 59
+  0.300000, close, 754, 58
+  0.400000, close, 744, 58
+  0.500000, close, 733, 57
+  0.600000, close, 718, 56
+  0.700000, close, 693, 54
+  0.800000, close, 674, 52
+  0.850000, close, 660, 51
+  0.870000, close, 654, 51
+  0.880000, close, 650, 50
+  0.890000, close, 647, 50
+  0.900000, close, 643, 50
+  0.910000, close, 638, 49
+  0.930000, close, 622, 48
+  0.950000, close, 610, 47
+  0.970000, close, 587, 45
+  0.980000, close, 564, 44
+  0.990000, close, 521, 40
+  1.000000, close, 74, 5
+  =====SUM(INVERT RAITIO)=====
+
+precisionが非常に良い。ということで、このモデルを一旦採用しよう！
+これで、ResNet34の学習は一旦打ち止めとする!
+
+gaaのissue11について少し進んだ。
+
+
 2023/03/01
 ===========
 

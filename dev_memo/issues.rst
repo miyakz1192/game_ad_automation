@@ -29,6 +29,10 @@ gaa
 
 14.ハングする場合がある(diary.rstの2023/02/24の「あと遭遇したエラーで」を参照)
 
+15. ffmpegでOutput file emptyなるエラーがでて、結果GAAが異常終了
+
+16. debug_result_showで見た時になぜか、closeとclosegbが混在して見える場合がある。SSDとResNet34でラベルが合っていない？？？
+
 SSD
 -----
 
