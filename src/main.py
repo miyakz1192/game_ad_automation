@@ -497,7 +497,7 @@ class GameAdAutomation():
         return res
 
     def __wait_scene_ad_to_initial(self):
-        res = self.__wait_scene_common("WAIT FOR SCENE AD TO INITIAL", True)
+        res = self.__wait_scene_common("WAIT FOR SCENE AD TO INITIAL", False)
         self.state = self.STATE_INITIAL
         return res
 
