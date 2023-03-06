@@ -312,7 +312,6 @@ class PytorchService(Service):
         return res
 
     def debug_result_show(self, screen_shot_image, res, file_name="./debug_result_show.jpg"):
-        return 
         plt.figure(figsize=(8,8))
         rgb_image = array_to_img(screen_shot_image.image,scale=False)
         color = plt.cm.hsv(np.linspace(0, 1, 21)).tolist()[0]
@@ -337,7 +336,8 @@ class PytorchService(Service):
 
         img = cv2.imread(file_name)
         cv2.imshow(file_name , img)
-        cv2.waitKey(0)
+        #cv2.waitKey(0)
+        cv2.waitKey(1000 * 15)
         cv2.destroyWindow(file_name)
 
         #input()
