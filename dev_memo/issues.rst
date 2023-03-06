@@ -11,13 +11,28 @@ GitHubのissuesの機能を使って、GAAの機能コンポ(サービス)ごと
 gaa
 -----
 
+14.ハングする場合がある(diary.rstの2023/02/24の「あと遭遇したエラーで」を参照)::
+  [DEBUG] wait for input
+  TRACE: touch position
+  TRACE: touch position=767,191
+  [DEBUG] wait for 15
+  scrcpy 1.24 <https://github.com/Genymobile/scrcpy>
+  INFO: Connecting to 192.168.110.178:40871...
+  failed to connect to 192.168.110.178:40871
+  ERROR: Could not connect to 192.168.110.178:40871
+  ERROR: Server connection failed
+  [DEBUG] touch pos!!!
+  
+17. 画面の遷移判定が変。PUSH CLOSE BUTTON->WAIT FOR SCENE AD TO INITIALで期待値としては画面遷移だがなぜか、"INFO: screen not changed. try scaning close again"とでて、CLOSEボタンのスキャンが始まってしまう
+　→　途中まで実施(しばらく様子見)::
+
+  commit 508d9c2e3dfb2391729c2790e104268d1793a718
+  Author: kazuhiro MIYASHITA <miyakz1192@gmail.com>
+  Date:   Mon Mar 6 16:10:16 2023 +0000
+  
+      push midas touch
+
 8. closeの認識精度が悪い(間違って検出、検出しない。など）
-
-11. 誤認識が発生して人間が手動でcloseボタンなどを押下して画面を遷移させた場合、GAAが正しい状態を認識できない。
-
-12. closeボタンやad buttonが見つからない場合の異常系の考慮が無い。
-
-13. ミダスの手を押下できない
 
 6. UserWarningがうざくて、ログが埋まる
 
@@ -26,10 +41,6 @@ gaa
 5. GAA側のimage logging。
 
 7. 動作が重い。とにかく重い。(issue No9の実施によりちょっと様子見)
-
-14.ハングする場合がある(diary.rstの2023/02/24の「あと遭遇したエラーで」を参照)
-
-15. ffmpegでOutput file emptyなるエラーがでて、結果GAAが異常終了
 
 16. debug_result_showで見た時になぜか、closeとclosegbが混在して見える場合がある。SSDとResNet34でラベルが合っていない？？？
 
@@ -107,6 +118,25 @@ gaa
   Date:   Sun Feb 19 15:51:29 2023 +0000
   
       scrcpy failed retry supported
+
+12. closeボタンやad buttonが見つからない場合の異常系の考慮が無い。
+　→　完了
+
+13. ミダスの手を押下できない
+　→　完了
+
+15. ffmpegでOutput file emptyなるエラーがでて、結果GAAが異常終了
+    →　完了::
+  commit 6aec62adc9623558361a7066a50f58898c586d57
+  Author: kazuhiro MIYASHITA <miyakz1192@gmail.com>
+  Date:   Mon Mar 6 14:34:46 2023 +0000
+  
+      retry self.__call_scrcpy_cmd_with_retry if self.__call_ffmpeg_cmd fails
+
+11. 誤認識が発生して人間が手動でcloseボタンなどを押下して画面を遷移させた場合、GAAが正しい状態を認識できない。
+　→　完了
+
+  
 
 SSD
 -----
