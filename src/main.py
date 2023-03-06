@@ -165,6 +165,9 @@ class GAAFile:
     def __init__(self, file_name):
         self.file_name = file_name
 
+    def file_path(self):
+        return self.file_name
+
     def remove_file(self):
         if self.exists_file() is True:
             os.remove(self.file_name)
@@ -217,24 +220,33 @@ class ScrcpyService(Service):
                 break
             print("ERROR: mp4 file get failed from scrcpy retry")
 
-    #WARN: this code is not thread safe!!
-    def get_screen_shot(self, file_name="/tmp/gaa_screen_temp.jpg"):
-        print("TRACE: get_screen_shot with %s" % (file_name))
-        self.__call_scrcpy_cmd_with_retry()
-        time.sleep(5)
-        mp4 = Mp4File(self.TEMP_MP4_PATH)
-        #print(f"[DEBUG] MP4 = {mp4.get_last_sec()}")
-        jpg_file = GAAFile(file_name)
+    def __call_ffmpeg_cmd(self, mp4_file, jpg_file):
         for i in range(self.RETRY_COUNT_CMD):
             jpg_file.remove_file()
-            command = ["ffmpeg", "-i", self.TEMP_MP4_PATH, "-ss", str(mp4.get_last_sec()) , "-frames:v", "1", file_name, "-y"]
+            command = ["ffmpeg", "-i", mp4_file.file_path(), "-ss", str(mp4_file.get_last_sec()) , "-frames:v", "1", jpg_file.file_path(), "-y"]
             #subprocess.check_output(command)
             #TODO: if ffmpeg is failed gaa..jpg should not be created
             res = subprocess.call(command)
             if res == 0 and jpg_file.exists_file() is True:
-                break
+                return True
             else:
                 print("ERROR: ffmpeg returned not 0(%d). retry" % (res))
+
+        return False
+
+    #WARN: this code is not thread safe!!
+    def get_screen_shot(self, file_name="/tmp/gaa_screen_temp.jpg"):
+        retry_count = 0
+        ok_flg = False
+        while ok_flg == False:
+            print("TRACE: get_screen_shot(try=%d) with %s" % (retry_count, file_name))
+            self.__call_scrcpy_cmd_with_retry()
+            time.sleep(5)
+            mp4 = Mp4File(self.TEMP_MP4_PATH)
+            #print(f"[DEBUG] MP4 = {mp4.get_last_sec()}")
+            jpg_file = GAAFile(file_name)
+            ok_flg = self.__call_ffmpeg_cmd(mp4, jpg_file)
+            retry_count += 1
 
         #TODO: consider is gaa...jpg is not found
         return ScreenShotFile(file_name)
