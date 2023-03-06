@@ -312,6 +312,7 @@ class PytorchService(Service):
         return res
 
     def debug_result_show(self, screen_shot_image, res, file_name="./debug_result_show.jpg"):
+        return 
         plt.figure(figsize=(8,8))
         rgb_image = array_to_img(screen_shot_image.image,scale=False)
         color = plt.cm.hsv(np.linspace(0, 1, 21)).tolist()[0]
@@ -413,7 +414,6 @@ class CyclicAdButtonPusher:
             self.counter = 0
             return self.__get_next_pos(screen_shot_image)
         
-        self.counter += 1
         pos_x = self.start_pos[0]
 
         return (pos_x, pos_y)
@@ -461,6 +461,7 @@ class CyclicAdButtonPusher:
                     print("INFO: this ad button ignored due to low score")
                     button_res = None
 
+        self.counter += 1
         print("INFO: push Ad Button end")
         return button_res
 
@@ -497,7 +498,7 @@ class GameAdAutomation():
         return res
 
     def __wait_scene_ad_to_initial(self):
-        res = self.__wait_scene_common("WAIT FOR SCENE AD TO INITIAL", False)
+        res = self.__wait_scene_common("WAIT FOR SCENE AD TO INITIAL", True)
         self.state = self.STATE_INITIAL
         return res
 
@@ -509,7 +510,7 @@ class GameAdAutomation():
             initial_image = self.initial_screen_shot_file.load()
             target_image = target_screen_shot_file.load()
             if initial_image.eq(target_image) == finish_cond:
-                print("INFO: scene changed!")
+                print("INFO: initial_image.eq(target_image) == %s" % (str(finish_cond)))
                 return True
 
         return False
@@ -538,6 +539,7 @@ class GameAdAutomation():
             return self.RES_RESCAN_CLOSE
 
         self.scrcpy_s.touch_position(pos)
+        time.sleep(10)
         if self.__wait_scene_ad_to_initial() is False:
             mid_log("INFO: screen not changed. try scaning close again")
             return self.RES_RESCAN_CLOSE
