@@ -149,7 +149,7 @@ class ScreenShotImage():
         return ScreenShotImage(temp)
 
     #this core retrun True is self and target_screen_shot_image shape is same. return False if different pixels are over threshold between self and target_screen_shot_image's
-    def eq(self, target_screen_shot_image, threshold=0.7):
+    def eq(self, target_screen_shot_image, threshold=0.5):
         if self.image.shape != target_screen_shot_image.image.shape:
             return False
 
@@ -577,7 +577,7 @@ def main():
     GameAdAutomation().naive_algo()
     print("INFO: end game ad automation !!!")
 
-def for_debug():
+def for_debug_issue18():
     initial_f = ScreenShotFile("/home/a/game_ad_automation/bad_case/issue_18/gaa_initial.jpg")
     target_f = ScreenShotFile("/home/a/game_ad_automation/bad_case/issue_18/gaa_wait_scene_common_target.jpg")
 
@@ -593,4 +593,4 @@ def for_debug():
 
 if __name__ == "__main__":
     main()
-#    for_debug()
+#    for_debug_issue18()
