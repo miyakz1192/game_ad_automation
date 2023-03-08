@@ -201,6 +201,12 @@ class ScrcpyService(Service):
     def phone(self):
         return os.environ["SCRCPY_PHONE"]
 
+    def __cmd_with_timeout(self, command, timeout=3):
+        try:
+            subprocess.run(command , shell=True, timeout=timeout)
+        except subprocess.TimeoutExpired as e:
+            print("INFO: timed out with %d" % (str(timeout)))
+
     def __call_scrcpy_cmd_with_retry(self):
         #command = ["/usr/local/bin/scrcpy", "--tcpip=" + self.phone(), "--verbosity=verbose", "--record=%s" % (self.TEMP_MP4_PATH)]
         command = ["/usr/local/bin/scrcpy", "--tcpip=" + self.phone(), "--record=%s" % (self.TEMP_MP4_PATH)]
@@ -262,14 +268,16 @@ class ScrcpyService(Service):
             print("TRACE: touch position=%d,%d" % (pos.rect.x, pos.rect.y))
     #        #scrcpy --tcpip=192.168.110.178:38665 --verbosity=verbose & sleep 10 ; echo "152,192" > mdown_input_pipe
             #TODO: retry if connection error
+
             command = ["scrcpy", "--tcpip=" + self.phone(), "--verbosity=verbose"]
             proc = subprocess.Popen(command)
             print("[DEBUG] wait for %d" % (self.WAIT_TIME_FOR_WIRELESS_DEBUG_DIALOG_VANISHED))
             time.sleep(self.WAIT_TIME_FOR_WIRELESS_DEBUG_DIALOG_VANISHED)
-            if proc.returncode is None: # scrcpy command is still active
+
+            if proc.poll() is None: # scrcpy command is still active
                 print("[DEBUG] touch pos!!!")
                 command = "echo " + str(int(pos.rect.x+pos.rect.width/2)) + "," + str(int(pos.rect.y+pos.rect.height/2)) + " > " + "mdown_input_pipe"
-                subprocess.run(command , shell=True)
+                self.__cmd_with_timeout(command)
                 time.sleep(5)
                 proc.send_signal(SIGINT)
                 break
@@ -569,5 +577,20 @@ def main():
     GameAdAutomation().naive_algo()
     print("INFO: end game ad automation !!!")
 
+def for_debug():
+    initial_f = ScreenShotFile("/home/a/game_ad_automation/bad_case/issue_18/gaa_initial.jpg")
+    target_f = ScreenShotFile("/home/a/game_ad_automation/bad_case/issue_18/gaa_wait_scene_common_target.jpg")
+
+    initial_image = initial_f.load()
+    target_image = target_f.load()
+
+    if initial_image.eq(target_image) == True:
+        print("INFO: eq")
+    else:
+        print("INFO: NOT EQ")
+
+
+
 if __name__ == "__main__":
     main()
+#    for_debug()
