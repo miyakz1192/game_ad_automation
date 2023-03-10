@@ -2,16 +2,174 @@
 GAA改造日記
 ===============
 
-全体的な人気をすべてこちらに集約することにする。
+全体的に日記をすべてこちらに集約することにする。
 すでにバラけたものを集約すること無く、新しい情報からこちらに集約する。
+
+2023/03/08
+=============
+
+以下の通り、幾つかのissueを片付けた。総括すると、GAAの画像検出や認識周りの品質強化はひととおり実施したかなぁという感じがあるけど、肝心の認識・検出精度が今ひとつ。今後はこちらを強化していく感じになるけど、小手先だけど効きそうなissue 23があり、こちらを実施してみようかなと思う。
+
+以下、本日消化した各issueについての詳細。
+
+issue 14は対処を実施した。現象が再現しないので、とりあえず再現待ちみたいな感じ。
+
+issue18の件。
+以下のように、thresholdが大きすぎる様子。実用的には0.5位がちょうど良さそう。この実装ではおそらく目には見えない微妙な変化も検出してしまっているため。::
+
+  (Pdb) l
+  152       def eq(self, target_screen_shot_image, threshold=0.7):
+  153           if self.image.shape != target_screen_shot_image.image.shape:
+  154               return False
+  155   
+  156           #give short name
+  157  ->         this = self.image
+  158           target = target_screen_shot_image.image
+  159   
+  160           count = np.count_nonzero(this == target) / this.size
+  161   
+  162           return count > threshold
+  (Pdb) n
+  > /home/a/game_ad_automation/src/main.py(158)eq()
+  -> target = target_screen_shot_image.image
+  (Pdb) 
+  > /home/a/game_ad_automation/src/main.py(160)eq()
+  -> count = np.count_nonzero(this == target) / this.size
+  (Pdb) n
+  > /home/a/game_ad_automation/src/main.py(162)eq()
+  -> return count > threshold
+  (Pdb) p count
+  0.5501634837962963
+  (Pdb) p this.size
+  3456000
+  (Pdb) np.count_nonzero(this == target)
+  1901365
+  (Pdb) type(this)
+  <class 'numpy.ndarray'>
+  (Pdb) p this.shape
+  (1600, 720, 3)
+  (Pdb) p 1600 * 720
+  1152000
+  (Pdb) p 1600 * 720 * 3
+  3456000
+  (Pdb) this[0]
+  array([[0, 0, 0],
+         [0, 0, 0],
+         [0, 0, 0],
+         ...,
+         [0, 0, 0],
+         [0, 0, 0],
+         [0, 0, 0]], dtype=uint8)
+  (Pdb) this[0][0]
+  array([0, 0, 0], dtype=uint8)
+  (Pdb) this[0][0][0]
+  0
+  (Pdb) this[0][100][0]
+  0
+  (Pdb) this[100][100][0]
+  10
+  (Pdb) np.count_nonzero(this == this)
+  3456000
+  (Pdb) 
+
+
+issue20
+-------------
+
+広告を観るボタンの保存でエラーになる件。log.txtにstack traceは保存。デバックしてみると、保存しようとしているimageのshapeが明らかに変。::
+
+  > /home/a/game_ad_automation/src/main.py(99)save()
+  -> image.save_img(self.file_path, array_to_img(self.image.image, scale = False))
+  (Pdb) p self.image.image.shape
+  (200, 0, 3)
+  (Pdb) 
+
+xが0になっているので、こりゃ怒られるよね。原因はその前のextractのところなんだろうけどね。
+
+で、なぜか、エラーになったケースではscrcpyで採取されるゲーム画像の全体サイズが異なる(エラーのケースは小さい)ことが判明。::
+
+  a@scrcpy:~/game_ad_automation/bad_case$ file issue_18/gaa_initial.jpg 
+  issue_18/gaa_initial.jpg: JPEG image data, baseline, precision 8, 720x1600, components 3
+  a@scrcpy:~/game_ad_automation/bad_case$ file issue_20/gaa_initial.jpg 
+  issue_20/gaa_initial.jpg: JPEG image data, baseline, precision 8, 464x1024, components 3
+  a@scrcpy:~/game_ad_automation/bad_case$ file issue_18/gaa_screen_temp.jpg 
+  issue_18/gaa_screen_temp.jpg: JPEG image data, baseline, precision 8, 720x1600, components 3
+  a@scrcpy:~/game_ad_automation/bad_case$ file issue_20/gaa_screen_temp.jpg 
+  issue_20/gaa_screen_temp.jpg: JPEG image data, baseline, precision 8, 464x1024, components 3
+  a@scrcpy:~/game_ad_automation/bad_case$ 
+
+extractでは画像を切り取るサイズを固定にとっているので、このようなケースでは対応出来ない。scrcpyの出力結果も 464 x 1024で採取しているメッセージがある::
+  
+  INFO: New texture: 464x1024
+
+これの対応はちょっと大変だわ。。。::
+  
+  INFO: Trilinear filtering enabled
+  DEBUG: Using icon: /usr/local/share/icons/hicolor/256x256/apps/scrcpy.png
+  INFO: Initial texture: 1080x2400
+  DEBUG: Starting demuxer thread
+  DEBUG: Starting recorder thread
+  INFO: Recording started to mp4 file: /tmp/a.mp4
+  DEBUG: [mdown_input] start
+  [server] ERROR: Encoding error: android.media.MediaCodec$CodecException: Error 0xfffffff4
+  [server] INFO: Retrying with -m1920...
+  [server] DEBUG: Using encoder: 'OMX.qcom.video.encoder.avc'
+  [server] ERROR: Encoding error: android.media.MediaCodec$CodecException: Error 0xfffffff4
+  [server] INFO: Retrying with -m1600...
+  [server] DEBUG: Using encoder: 'OMX.qcom.video.encoder.avc'
+  [server] ERROR: Encoding error: android.media.MediaCodec$CodecException: Error 0xfffffff4
+  [server] INFO: Retrying with -m1280...
+  [server] DEBUG: Using encoder: 'OMX.qcom.video.encoder.avc'
+  [server] ERROR: Encoding error: android.media.MediaCodec$CodecException: Error 0xfffffff4
+  [server] INFO: Retrying with -m1024...
+  [server] DEBUG: Using encoder: 'OMX.qcom.video.encoder.avc'
+  INFO: New texture: 464x1024
+  DEBUG: User requested to quit
+
+なんか、いままで出ていなかったようなエンコードエラーが出ている気がするのね。ゲーム自体を再起動して再度実施してみると上手く行った。
+
+現在、このGAAはscrcpyが取得する以下のサイズにプログラムが固定で依存してしまっているので、将来的には、比率ベースでextract時のサイズとかを決定する必要がある。::
+
+  INFO: New texture: 864x1920 (★上手く行くケース)
+
+issue19
+----------  
+
+issue19の調査資料に入っているgood_caseはscrcpyが864x1920で取得した時のもので、この時はcloseの認識が上手く言っている。game eye再度のresult.jpgを比較してもSSDの時点で864x1920の時のほうがだいぶ精度が良い様子。試しにgaa_initial.jpgのサイズを出してみると以下::
+  
+  a@scrcpy:~/game_ad_automation/bad_case/issue_19$ file gaa_initial.jpg 
+  gaa_initial.jpg: JPEG image data, baseline, precision 8, 720x1600, components 3
+  a@scrcpy:~/game_ad_automation/bad_case/issue_19$ file good_case/gaa_initial.jpg 
+  good_case/gaa_initial.jpg: JPEG image data, baseline, precision 8, 864x1920, components 3
+  a@scrcpy:~/game_ad_automation/bad_case/issue_19$ 
+
+issue20の時と違って、画像認識や検出は多少の画像サイズの大小が生じても認識精度がガクンと違う（落ちる）のはちょっと気になる。なぜなら、スマホの機種が変更になって画面サイズが異なった場合に使えないモデルということになるからだ。
+
+この件は画像サイズが多少大小させても認識精度があまり変わらないというようにするべしという観点に立って、調査をすすめることにする
+
+issue21
+---------
+
+こちらはscrcpyの画面サイズが864x1920であるにもかかわらず、closeが誤認識してる。closeもcloseじゃないもの(時計1:22)もcloseとして1.0で認識している件。::
+
+  a@pytorch:~/resset$ python3 core/resnet34.py single /home/a/pytorch_ssd/image_log/20230308162214842053/closebcow_12_0.jpg 
+  INFO main
+  dataset size = 100386
+  dataset classses = 991
+  /home/a/.local/lib/python3.8/site-packages/torchvision/models/_utils.py:208: UserWarning: The parameter 'pretrained' is deprecated since 0.13 and may be removed in the future, please use 'weights' instead.
+    warnings.warn(
+  /home/a/.local/lib/python3.8/site-packages/torchvision/models/_utils.py:223: UserWarning: Arguments other than a weight enum or `None` for 'weights' are deprecated since 0.13 and may be removed in the future. The current behavior is equivalent to passing `weights=ResNet34_Weights.IMAGENET1K_V1`. You can also use `weights=ResNet34_Weights.DEFAULT` to get the most up-to-date weights.
+    warnings.warn(msg)
+  (990, 1.0)
+  a@pytorch:~/resset$ 
+  
+
 
 2023/03/06
 ============
 
-つぶさにGAAのバグを潰して品質を少しづつ高めていく作業を継続。::
+つぶさにGAAのバグを潰して品質を少しづつ高めていく作業を継続。
 
-  
-  
 2023/03/02
 ============
 

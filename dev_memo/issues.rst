@@ -11,29 +11,15 @@ GitHubのissuesの機能を使って、GAAの機能コンポ(サービス)ごと
 gaa
 -----
 
-14.ハングする場合がある(diary.rstの2023/02/24の「あと遭遇したエラーで」を参照)::
-  [DEBUG] wait for input
-  TRACE: touch position
-  TRACE: touch position=767,191
-  [DEBUG] wait for 15
-  scrcpy 1.24 <https://github.com/Genymobile/scrcpy>
-  INFO: Connecting to 192.168.110.178:40871...
-  failed to connect to 192.168.110.178:40871
-  ERROR: Could not connect to 192.168.110.178:40871
-  ERROR: Server connection failed
-  [DEBUG] touch pos!!!
-  
-17. 画面の遷移判定が変。PUSH CLOSE BUTTON->WAIT FOR SCENE AD TO INITIALで期待値としては画面遷移だがなぜか、"INFO: screen not changed. try scaning close again"とでて、CLOSEボタンのスキャンが始まってしまう
-　→　途中まで実施(しばらく様子見)::
+23. 超小手先だけど、closeの候補を選び出す場合、TOPと同点のclose候補が複数ある場合、WidthとHeightの差の絶対値が一番小さいもの(要するに正方形に一番近いもの)を選び出す。根本的にはResNet34の認識精度を向上することにあるが、このヒューリスティックな方法は結構強力かもしれん
 
-  commit 508d9c2e3dfb2391729c2790e104268d1793a718
-  Author: kazuhiro MIYASHITA <miyakz1192@gmail.com>
-  Date:   Mon Mar 6 16:10:16 2023 +0000
-  
-      push midas touch
+22. scrcpyが取得するサイズが864x1920以外の場合、リトライするとかゲームの再起動を促すとか
 
 8. closeの認識精度が悪い(間違って検出、検出しない。など）
+ → 　類似でissue21を発行資料→ a@scrcpy:~/game_ad_automation/bad_case/issue_21$ 
 
+19. ちゃんと認識して良いケースで認識せず。issue19。調査資料は、/home/a/game_ad_automation/bad_case/issue_19。このissueは画像サイズが多少変わっても、精度に大きな影響がないようにする検討に変更。認識精度という括りでは、No8と類似
+  
 6. UserWarningがうざくて、ログが埋まる
 
 10. adbuttonの認識をSSDを使わずに固定された座標で対応するようにする(優先度低？今のadbutton認識の精度が悪ければ検討)
@@ -43,6 +29,9 @@ gaa
 7. 動作が重い。とにかく重い。(issue No9の実施によりちょっと様子見)
 
 16. debug_result_showで見た時になぜか、closeとclosegbが混在して見える場合がある。SSDとResNet34でラベルが合っていない？？？
+
+20. issue20資料参照。再現性あり。ミダスのての広告を観るボタンが灰色なのが原因？？？なお、saveで失敗しているケースなので、/tmp/adbutton.jpgは前野データであり、参考にならないことに注意。その後の調査により原因がわかって、このissueの課題としては、scrcpyが取得する画面のサイズに応じて、extract時の切り出しサイズや切り出しの初期posを決定するという課題に変化
+
 
 SSD
 -----
@@ -83,6 +72,54 @@ dl_image_manager
 
 gaa
 -----
+
+18. 17と同じ件。以下のコードの比較の所がきっとバグっている::
+    513     def __wait_scene_common(self, message, finish_cond, try_count=1):
+    514         for i in range(try_count): 
+    515             big_log(message)
+    516             self.__print_state()
+    517             target_screen_shot_file = self.scrcpy_s.get_screen_shot(file_name="/tmp/gaa_wait_scene_common_target.jpg")
+    518             initial_image = self.initial_screen_shot_file.load()
+    519             target_image = target_screen_shot_file.load()
+    520             if initial_image.eq(target_image) == finish_cond:
+    521                 print("INFO: initial_image.eq(target_image) == %s" % (str(finish_cond)))
+    522                 return True
+    523 
+    524         return False
+  ここでどうもFalseを返しているらしい。~/game_ad_automation/bad_case/issue_18にファイルを置いておいた。::
+
+  commit dfe592ea8222775d9019b2b819be9117969b7be5
+  Author: kazuhiro MIYASHITA <miyakz1192@gmail.com>
+  Date:   Wed Mar 8 15:20:20 2023 +0000
+  
+      issue 18. eq method threshold changed 0.7 to 0.5
+
+17. 画面の遷移判定が変。PUSH CLOSE BUTTON->WAIT FOR SCENE AD TO INITIALで期待値としては画面遷移だがなぜか、"INFO: screen not changed. try scaning close again"とでて、CLOSEボタンのスキャンが始まってしまう(issue 14と類似)
+　→　途中まで実施(しばらく様子見)::
+
+  commit 508d9c2e3dfb2391729c2790e104268d1793a718
+  Author: kazuhiro MIYASHITA <miyakz1192@gmail.com>
+  Date:   Mon Mar 6 16:10:16 2023 +0000
+  
+      push midas touch
+
+14.ハングする場合がある(diary.rstの2023/02/24の「あと遭遇したエラーで」を参照)::
+  [DEBUG] wait for input
+  TRACE: touch position
+  TRACE: touch position=767,191
+  [DEBUG] wait for 15
+  scrcpy 1.24 <https://github.com/Genymobile/scrcpy>
+  INFO: Connecting to 192.168.110.178:40871...
+  failed to connect to 192.168.110.178:40871
+  ERROR: Could not connect to 192.168.110.178:40871
+  ERROR: Server connection failed
+  [DEBUG] touch pos!!!
+
+  commit 243c4ca65a908408febce9bfd329f8cb7151f8f6 (HEAD -> master)
+  Author: kazuhiro MIYASHITA <miyakz1192@gmail.com>
+  Date:   Wed Mar 8 15:03:20 2023 +0000
+  
+      issue 14
 2. closeの認識、利用箇所でラベルがcloseかどうかを気にしていないので、それをフィルタリングするようにする。つまりcloseを識別したいのであれば、*close*の指定を行う。など。　→　雑だけど完了。
 
 4.「広告をみる」ボタンを考慮した対応をGAA本体側に施す。 → ちょっとできた::
