@@ -30,6 +30,7 @@ import pdb
 from matplotlib import pyplot as plt
 
 import re
+import sys
 
 def big_log(message):
     print("==========================================")
@@ -319,7 +320,7 @@ class PytorchService(Service):
         res.load(self.LOCAL_PICKLE_FILE_PATH)
         return res
 
-    def debug_result_show(self, screen_shot_image, res, file_name="./debug_result_show.jpg"):
+    def debug_result_show(self, screen_shot_image, res, file_name="./debug_result_show.jpg", wait_sec=15):
         plt.figure(figsize=(8,8))
         rgb_image = array_to_img(screen_shot_image.image,scale=False)
         color = plt.cm.hsv(np.linspace(0, 1, 21)).tolist()[0]
@@ -345,10 +346,27 @@ class PytorchService(Service):
         img = cv2.imread(file_name)
         cv2.imshow(file_name , img)
         #cv2.waitKey(0)
-        cv2.waitKey(1000 * 15)
+        cv2.waitKey(1000 * wait_sec)
         cv2.destroyWindow(file_name)
 
         #input()
+
+    #con: DetectionResultContainer
+    def __select_best_close(self, con, threshold = 0.99):
+        r = re.compile(r'.*close.*')
+
+        closes = con.res
+        closes = list(filter(lambda x: r.match(x.label) and x.score >= threshold , closes))
+
+        best_close = None
+        best_score = sys.maxsize
+        for close in closes:
+            score = abs(close.rect.width - close.rect.height)
+            if score < best_score:
+                best_score = score
+                best_close = close
+
+        return best_close
 
     #WARN: this code is not thread safe!!
     def get_close_position(self, screen_shot_file):
@@ -393,14 +411,15 @@ class PytorchService(Service):
 
         self.debug_result_show(screen_shot_image, res)
 
-        if len(res.res) > 0:
-            for i in res.res:
-                #FIXME: this code is buggy
-                if re.match(r'.*close.*', i.label) is not None:
-                    if i.score >= 0.99:
-                        return i
+        best_close = self.__select_best_close(res)
 
-        return None
+        #for debug_result_show only
+        if best_close is not None:
+            print("INFO: best close found !!!!!!!!!!!!!")
+            self.debug_result_show(screen_shot_image, [best_close])
+        ##########################
+
+        return best_close
 
 class CyclicAdButtonPusher:
     def __init__(self, pytorch_s):
@@ -439,6 +458,7 @@ class CyclicAdButtonPusher:
         print("INFO: push Ad Button start")
         screen_shot_image = screen_shot_file.load()
         pos = self.__get_next_pos(screen_shot_image)
+        print("INFO: PUSH POS => [%d]@%s" % (self.counter,str(pos)))
         adbutton_img = screen_shot_image.extract(pos, self.window_size)
         adbutton_f = ScreenShotFile("/tmp/adbutton.jpg")
         adbutton_f.associate_image(adbutton_img)
