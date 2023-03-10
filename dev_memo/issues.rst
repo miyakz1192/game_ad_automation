@@ -11,8 +11,6 @@ GitHubのissuesの機能を使って、GAAの機能コンポ(サービス)ごと
 gaa
 -----
 
-23. 超小手先だけど、closeの候補を選び出す場合、TOPと同点のclose候補が複数ある場合、WidthとHeightの差の絶対値が一番小さいもの(要するに正方形に一番近いもの)を選び出す。根本的にはResNet34の認識精度を向上することにあるが、このヒューリスティックな方法は結構強力かもしれん
-
 22. scrcpyが取得するサイズが864x1920以外の場合、リトライするとかゲームの再起動を促すとか
 
 8. closeの認識精度が悪い(間違って検出、検出しない。など）
@@ -64,14 +62,21 @@ dl_image_manager
 
 1. master/image.jpgからannotation xmlを自動生成する。例えば、master/image.jpgが300 x 100の画像だとすると、annotationの画像サイズを指定するところもそのサイズだし、ピッタリサイズなのでxmin/ymin,xmax/ymaxの自動的に決定されるので。
 
-  
-
 
 実施済みのissue
 ====================
 
 gaa
 -----
+
+23. 超小手先だけど、closeの候補を選び出す場合、TOPと同点のclose候補が複数ある場合、WidthとHeightの差の絶対値が一番小さいもの(要するに正方形に一番近いもの)を選び出す。根本的にはResNet34の認識精度を向上することにあるが、このヒューリスティックな方法は結構強力かもしれん
+    →　完了::
+  commit 190fe45031bb4ccac1ebd8189b04d0fb389a5ae4 (HEAD -> master)
+  Author: kazuhiro MIYASHITA <miyakz1192@gmail.com>
+  Date:   Fri Mar 10 16:41:34 2023 +0000
+  
+      issue23. select best close which width and height may same in __select_best_close
+  
 
 18. 17と同じ件。以下のコードの比較の所がきっとバグっている::
     513     def __wait_scene_common(self, message, finish_cond, try_count=1):
