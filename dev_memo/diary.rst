@@ -5,6 +5,54 @@ GAA改造日記
 全体的に日記をすべてこちらに集約することにする。
 すでにバラけたものを集約すること無く、新しい情報からこちらに集約する。
 
+2023/03/12
+===========
+
+一旦これで、GAA本体自体の開発を打ち切って、自分自身の書籍学習に移行しようと思ったけど、issue24(close自動学習(半自動学習))を実施したいと思う。
+
+これをやっておくと、GAAの自動進化のプロセスが出来上がることになるので、後々大変ラクになると考えたため。
+
+まずは、dl_image_managerのissue1を消化していく。
+
+次の日はgaaのissue25、そして、dl_image_managerのissue4(本体)。
+
+※　dl_image_managerのissue1はResNet34に特化して考えると対処は不要だけど、将来的にSSDのことを考えると実施したほうが良いため実施する。
+
+closeの半自動学習の仕様
+--------------------------
+
+GAAでGAAがcloseと判断した画像と、非closeと判断した画像を保存するディレクトリを決める。
+
+images/auto_gen/close/true  : GAAが真のcloseと判断したもの
+images/auto_gen/close/false : GAAが偽のcloseと判断したもの
+なお、各ディレクトリに配置されるファイル名はx.jpgとする(xは0開始の番号)。
+
+dl_image_manager/bin/のautoclose.pyを実行することで、scrcpyからautoclose.tar.gzがダウンロードされ、~/dl_image_manager/images/autocloseが生成され、projects_store/common配下に自動追加されたautocloseのprojectが生成されて、配置される。また、このプログラムの処理結果として、configディレクトリにadditional_merge_target_src_projects.txtを生成する(これがmerge_project.pyで利用される※ merge_project.pyはこのtxtファイルを追加のsrcとして処理するように改造が必要。あとmerge_project.pyではtarget srcの重複を排除しておく処理を念の為追加しておく)。
+
+dl_image_managerではscrcpyサーバの/home/a/game_ad_automation/autocloseをtar.gzで固めて、自分自身の~/dl_image_manager/に落としてくる。
+
+まず、projects配下にautocloseadd_*がすでに存在するかをチェックして、存在する場合はエラーで終了。
+projects_store/common配下にすでに生成されているautocloseadd_xを検出し、xの添字の最大値を得る。x+1が次に採用する番号である。
+
+projects_store/common/autocloseadd_xの各々のmaster image jpgのsha256sum値をkey、valueがxのハッシュ値として保持する(重複projects作成防止に利用)
+
+処理は、autoclose/true_closeの各画像のファイル名をリスト化して、リストについて次の処理がループする。i = x+1とする。
+
+ファイルのsha256sum値を取得して、ハッシュを照合する。
+もし、照合したら重複作成ということで、continueする
+
+make_project.shでautocloseadd_iを作成する。
+
+作成したprojectのmaster/image.jpgとして当該リストをcopyする
+bin/gen_anno_xml.py autocloseadd_iを実行する。
+
+projects/autoclose_iをprojects_store/common配下にmoveする。
+
+i++
+
+※ build.shあたりでadditional_merge_target_src_projects.txtをクリアしておくとよいかも。
+
+
 2023/03/10
 ============
 
