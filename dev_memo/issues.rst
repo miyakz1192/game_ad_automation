@@ -11,7 +11,11 @@ GitHubのissuesの機能を使って、GAAの機能コンポ(サービス)ごと
 gaa
 -----
 
-23. 超小手先だけど、closeの候補を選び出す場合、TOPと同点のclose候補が複数ある場合、WidthとHeightの差の絶対値が一番小さいもの(要するに正方形に一番近いもの)を選び出す。根本的にはResNet34の認識精度を向上することにあるが、このヒューリスティックな方法は結構強力かもしれん
+25. images/autoclose/true_close, false_close保存の実装
+
+24. closeの自動学習(半自動学習)の仕組み
+
+5. GAA側のimage loggingとlogviewer。
 
 22. scrcpyが取得するサイズが864x1920以外の場合、リトライするとかゲームの再起動を促すとか
 
@@ -24,7 +28,6 @@ gaa
 
 10. adbuttonの認識をSSDを使わずに固定された座標で対応するようにする(優先度低？今のadbutton認識の精度が悪ければ検討)
 
-5. GAA側のimage logging。
 
 7. 動作が重い。とにかく重い。(issue No9の実施によりちょっと様子見)
 
@@ -39,6 +42,8 @@ SSD
 1. 学習結果のテストプログラムの実装。
 
 2. 画像認識classの定数値の自動決定。データセットを読み込み、labelを列挙。それをuniq掛けて、セットしていけば良い(sortなどするとラベル順が安定してよいかな)。
+
+※　注意projects_store/common配下にautocloseデータが入っているので、こいつをマージするようにssd側のマージ設定が必要。ResNet34と仕様や処理を共通化出来るかもしれない。
 
 ResNet34
 ------------
@@ -61,17 +66,22 @@ gaa_lib
 dl_image_manager
 ----------------------
 
-
-1. master/image.jpgからannotation xmlを自動生成する。例えば、master/image.jpgが300 x 100の画像だとすると、annotationの画像サイズを指定するところもそのサイズだし、ピッタリサイズなのでxmin/ymin,xmax/ymaxの自動的に決定されるので。
-
-  
-
+4. bin/autoclose.pyの実装
 
 実施済みのissue
 ====================
 
 gaa
 -----
+
+23. 超小手先だけど、closeの候補を選び出す場合、TOPと同点のclose候補が複数ある場合、WidthとHeightの差の絶対値が一番小さいもの(要するに正方形に一番近いもの)を選び出す。根本的にはResNet34の認識精度を向上することにあるが、このヒューリスティックな方法は結構強力かもしれん
+    →　完了::
+  commit 190fe45031bb4ccac1ebd8189b04d0fb389a5ae4 (HEAD -> master)
+  Author: kazuhiro MIYASHITA <miyakz1192@gmail.com>
+  Date:   Fri Mar 10 16:41:34 2023 +0000
+  
+      issue23. select best close which width and height may same in __select_best_close
+  
 
 18. 17と同じ件。以下のコードの比較の所がきっとバグっている::
     513     def __wait_scene_common(self, message, finish_cond, try_count=1):
@@ -248,6 +258,15 @@ gaa_lib
 dl_image_manager
 -------------------
 
+3. bin/merge_project.pyで引数に受けたテキストファイルを追加のsrcとして認識するようにする。
+ →　完了::
+  
+  commit 11b65a5d0ab2bef49add6e40c04b770e368e0911 (HEAD -> master, origin/master, origin/HEAD)
+  Author: kazuhiro MIYASHITA <miyakz1192@gmail.com>
+  Date:   Sun Mar 12 16:08:42 2023 +0000
+  
+      in merge_project.py additional target src project in specified text file
+
 2. resnet34/ssdごとにprojectsの内容を切り替えられるようにする。commonと各アルゴリズム固有のモノを分ける。::
   commit 2c7a50ded24b6ac237b79098067dced7e06f817d (HEAD -> master, origin/master, origin/HEAD)
   Author: kazuhiro MIYASHITA <miyakz1192@gmail.com>
@@ -286,8 +305,12 @@ dl_image_manager
   Date:   Wed Mar 1 14:06:42 2023 +0000
   
       bin/merge_project.py
+
+1. master/image.jpgからannotation xmlを自動生成する。例えば、master/image.jpgが300 x 100の画像だとすると、annotationの画像サイズを指定するところもそのサイズだし、ピッタリサイズなのでxmin/ymin,xmax/ymaxの自動的に決定されるので。bin/gen_anno_xml.py。
+   →　完了::
   
-
-
-
-
+  commit 97150c37db0f266d85ad823f35f95bdd6943126e (HEAD -> master, origin/master, origin/HEAD)
+  Author: kazuhiro MIYASHITA <miyakz1192@gmail.com>
+  Date:   Sun Mar 12 15:43:36 2023 +0000
+  
+      bin/gen_anno_xml.py added

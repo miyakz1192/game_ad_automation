@@ -5,6 +5,82 @@ GAA改造日記
 全体的に日記をすべてこちらに集約することにする。
 すでにバラけたものを集約すること無く、新しい情報からこちらに集約する。
 
+2023/03/12
+===========
+
+一旦これで、GAA本体自体の開発を打ち切って、自分自身の書籍学習に移行しようと思ったけど、issue24(close自動学習(半自動学習))を実施したいと思う。
+
+これをやっておくと、GAAの自動進化のプロセスが出来上がることになるので、後々大変ラクになると考えたため。
+
+まずは、dl_image_managerのissue1を消化していく。
+
+次の日はgaaのissue25、そして、dl_image_managerのissue4(本体)。
+
+※　dl_image_managerのissue1はResNet34に特化して考えると対処は不要だけど、将来的にSSDのことを考えると実施したほうが良いため実施する。
+
+closeの半自動学習の仕様
+--------------------------
+
+GAAでGAAがcloseと判断した画像と、非closeと判断した画像を保存するディレクトリを決める。
+
+images/auto_gen/close/true  : GAAが真のcloseと判断したもの
+images/auto_gen/close/false : GAAが偽のcloseと判断したもの
+なお、各ディレクトリに配置されるファイル名はx.jpgとする(xは0開始の番号)。
+
+dl_image_manager/bin/のautoclose.pyを実行することで、scrcpyからautoclose.tar.gzがダウンロードされ、~/dl_image_manager/images/autocloseが生成され、projects_store/common配下に自動追加されたautocloseのprojectが生成されて、配置される。また、このプログラムの処理結果として、configディレクトリにadditional_merge_target_src_projects.txtを生成する(これがmerge_project.pyで利用される※ merge_project.pyはこのtxtファイルを追加のsrcとして処理するように改造が必要。あとmerge_project.pyではtarget srcの重複を排除しておく処理を念の為追加しておく)。
+
+dl_image_managerではscrcpyサーバの/home/a/game_ad_automation/autocloseをtar.gzで固めて、自分自身の~/dl_image_manager/に落としてくる。
+
+まず、projects配下にautocloseadd_*がすでに存在するかをチェックして、存在する場合はエラーで終了。
+projects_store/common配下にすでに生成されているautocloseadd_xを検出し、xの添字の最大値を得る。x+1が次に採用する番号である。
+
+projects_store/common/autocloseadd_xの各々のmaster image jpgのsha256sum値をkey、valueがxのハッシュ値として保持する(重複projects作成防止に利用)
+
+処理は、autoclose/true_closeの各画像のファイル名をリスト化して、リストについて次の処理がループする。i = x+1とする。
+
+ファイルのsha256sum値を取得して、ハッシュを照合する。
+もし、照合したら重複作成ということで、continueする
+
+make_project.shでautocloseadd_iを作成する。
+
+作成したprojectのmaster/image.jpgとして当該リストをcopyする
+bin/gen_anno_xml.py autocloseadd_iを実行する。
+
+projects/autoclose_iをprojects_store/common配下にmoveする。
+
+i++
+
+※ build.shあたりでadditional_merge_target_src_projects.txtをクリアしておくとよいかも。
+
+
+2023/03/10
+============
+
+issue 23の実装を完了した。
+
+issue23のおかげで、広告を観るボタンとcloseを押すのが一周できた(つまり、広告を全部見切ることができた！）。出ている広告のほとんどがはっきりcloseがでる広告(Instagram)だったのが今回の成功の大きな要因だが、GAAの完成度が一定の所まで到達したことの証拠となる日であったことは認められる。
+
+これにて、これからはResNet34の認識精度を如何に高めていくかに焦点が移る。数学の再勉強や、DL関係の書籍の学習と並行して、以下の仕組みに取り組みたい。
+
+closeの自動学習の仕組み
+--------------------------
+
+GAAを実行するなかで、closeと非closeの画像を自動的に集めてそれを元にResNet34の認識精度を高めることが出来ないかということ。
+
+現状、__push_close_buttonメソッドでは、GAAが検出したcloseの真の正誤にかかわらず、closeを押してみる。
+そして、押した後は、初期画面に戻っているかを確認し、戻っていない場合、closeを再度スキャンする。
+
+ということは、このメソッドで検出したbest_closeによって、初期画面に遷移すれば、そのbest_closeは真のcloseで、そうでない場合は間違って押下した真の非closeと考えてよい。
+
+GAAを実行する度に上記の基準で判断したclose画像を集めて、それを学習ネタに使えばどんどん検出精度が上がるのではないかというアイデア。
+
+一応、そうして収集したclose画像が真のcloseか、真の非closeかは人間が最終的に確認する必要はあるが、学習ネタを収集する労力はすごく減りそう。さらに、収集した画像１つ１つについて、projectを自動生成することができれば更に便利。closeの"半"自動学習がこれで出来そうだ。
+
+それには、dl_image_managerのissue 1の解決が必要。
+
+なお、せっかく得た真の非close画像を使って、ResNet34がそれをcloseと誤検出した場合、その画像をcloseと検出しないように重みにペナルティを加えることなど出来るのかなぁ。これは別途勉強することにする。
+
+
 2023/03/08
 =============
 
