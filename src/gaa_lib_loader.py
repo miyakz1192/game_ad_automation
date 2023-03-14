@@ -5,4 +5,6 @@ import sys
 sys.path.append("/home/a/gaa_lib/")
 ## net
 sys.path.append("/home/a/gaa_lib/net")
+## file
+sys.path.append("/home/a/gaa_lib/file")
 

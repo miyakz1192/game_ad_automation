@@ -19,8 +19,10 @@ from keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras.utils import array_to_img
 
 import gaa_lib_loader
+import gaa_constants
 from detection_result import *
 from easy_sshscp import *
+from number_suffix import *
 
 import torch
 import json
@@ -148,6 +150,14 @@ class ScreenShotImage():
         temp = self.image[y:y+h,x:x+w]
 
         return ScreenShotImage(temp)
+
+    #detection_result: DetectionResult
+    def extract_with_DR(self, detection_result):
+        #give short name
+        r = detection_result.rect
+        start_pos = (r.x, r.y)
+        size = (r.width, r.height)
+        return self.extract(start_pos, size)
 
     #this core retrun True is self and target_screen_shot_image shape is same. return False if different pixels are over threshold between self and target_screen_shot_image's
     def eq(self, target_screen_shot_image, threshold=0.5):
@@ -519,7 +529,6 @@ class GameAdAutomation():
         big_log("GET INITIAL SCENE")
         self.initial_screen_shot_file = self.scrcpy_s.get_screen_shot(file_name="/tmp/gaa_initial.jpg")
 
-
     def __wait_scene_initial_to_ad(self):
         res = self.__wait_scene_common("WAIT FOR SCENE INITIAL TO AD", False)
         self.state = self.STATE_AD
@@ -558,6 +567,23 @@ class GameAdAutomation():
 
         return self.RES_SCENE_CHANGED_INITIAL_TO_AD
 
+    #src_screen_shot_file: ScreenShotFile
+    #src_pos_dr: DetectionResult
+    def __save_img_at(self, src_screen_shot_file, src_pos_dr, directory, file_name_prefix):
+        mid_log("INFO: saving close")
+        nsf = NumberSuffixFile(directory_path=directory)
+        img = src_screen_shot_file.image.extract_with_DR(src_pos_dr)
+        img_f = ScreenShotFile(directory + "/" + file_name_prefix+ "_" + str(nsf.next()) + ".jpg")
+
+        img_f.associate_image(img)
+        img_f.save()
+
+    def __save_true_close(self, src_screen_shot_file, src_pos_dr):
+        self.__save_img_at(src_screen_shot_file, src_pos_dr, gaa_constants.GAA_AUTO_GEN_DIR_CLOSE_TRUE, "close")
+
+    def __save_false_close(self, src_screen_shot_file, src_pos_dr):
+        self.__save_img_at(src_screen_shot_file, src_pos_dr, gaa_constants.GAA_AUTO_GEN_DIR_CLOSE_FALSE, "close")
+
     def __push_close_button(self):
         big_log("PUSH CLOSE BUTTON")
         screen_shot = self.scrcpy_s.get_screen_shot()
@@ -570,8 +596,10 @@ class GameAdAutomation():
         time.sleep(10)
         if self.__wait_scene_ad_to_initial() is False:
             mid_log("INFO: screen not changed. try scaning close again")
+            self.__save_false_close(screen_shot, pos)
             return self.RES_RESCAN_CLOSE
 
+        self.__save_true_close(screen_shot, pos)
         return self.RES_SCENE_CHANGED_AD_TO_INITIAL
     
     def naive_algo(self):
@@ -609,8 +637,13 @@ def for_debug_issue18():
     else:
         print("INFO: NOT EQ")
 
-
+def for_debug_number_suffix():
+    nsf = NumberSuffixFile(directory_path=gaa_constants.GAA_AUTO_GEN_DIR_CLOSE_TRUE)
+    print(nsf.numbers)
+    print(nsf.max())
+    print(nsf.next())
 
 if __name__ == "__main__":
     main()
 #    for_debug_issue18()
+#    for_debug_number_suffix()
