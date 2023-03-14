@@ -11,10 +11,6 @@ GitHubのissuesの機能を使って、GAAの機能コンポ(サービス)ごと
 gaa
 -----
 
-25. images/autoclose/true_close, false_close保存の実装
-
-24. closeの自動学習(半自動学習)の仕組み
-
 5. GAA側のimage loggingとlogviewer。
 
 22. scrcpyが取得するサイズが864x1920以外の場合、リトライするとかゲームの再起動を促すとか
@@ -73,6 +69,15 @@ dl_image_manager
 
 gaa
 -----
+
+24. closeの自動学習(半自動学習)の仕組み(issue 25と同じ)
+25. images/autoclose/true_close, false_close保存の実装
+    → 　完了::
+  commit e26905f94295b520c245abc4795ff93653e17a36
+  Author: kazuhiro MIYASHITA <miyakz1192@gmail.com>
+  Date:   Tue Mar 14 14:21:21 2023 +0000
+  
+      issue 25. In GAA saving true/false close supported
 
 23. 超小手先だけど、closeの候補を選び出す場合、TOPと同点のclose候補が複数ある場合、WidthとHeightの差の絶対値が一番小さいもの(要するに正方形に一番近いもの)を選び出す。根本的にはResNet34の認識精度を向上することにあるが、このヒューリスティックな方法は結構強力かもしれん
     →　完了::
