@@ -420,6 +420,7 @@ class PytorchService(Service):
         #res.print()
 
         self.debug_result_show(screen_shot_image, res)
+        #TODO: image logging(message="get close pos", screen_shot_image, res)
 
         best_close = self.__select_best_close(res)
 
@@ -427,6 +428,7 @@ class PytorchService(Service):
         if best_close is not None:
             print("INFO: best close found !!!!!!!!!!!!!")
             self.debug_result_show(screen_shot_image, [best_close])
+            #TODO: image logging(message="best close pos", screen_shot_image, res)
         ##########################
 
         return best_close
@@ -495,6 +497,7 @@ class CyclicAdButtonPusher:
                 #print("INFO: __window_coordinate_system_to_normal")
                 #button_res.print()
                 self.pytorch_s.debug_result_show(screen_shot_image, [button_res], file_name="./adbutton_debug_res.jpg")
+                #TODO: image logging(message="push ad button", screen_shot_image, [button_res]) 
                 if button_res.score < 0.1:
                     print("INFO: this ad button ignored due to low score")
                     button_res = None
@@ -539,17 +542,19 @@ class GameAdAutomation():
         self.state = self.STATE_INITIAL
         return res
 
-    def __wait_scene_common(self, message, finish_cond, try_count=1):
+    def __wait_scene_common(self, message, finish_cond, try_count=10):
         for i in range(try_count): 
             big_log(message)
             self.__print_state()
             target_screen_shot_file = self.scrcpy_s.get_screen_shot(file_name="/tmp/gaa_wait_scene_common_target.jpg")
             initial_image = self.initial_screen_shot_file.load()
             target_image = target_screen_shot_file.load()
+            #TODO: image logging(message ,initial_image, target_image, eq_score)
             if initial_image.eq(target_image) == finish_cond:
                 print("INFO: initial_image.eq(target_image) == %s" % (str(finish_cond)))
                 return True
 
+        print("INFO: initial_image.eq(target_image) != %s" % (str(finish_cond)))
         return False
 
     def __push_ad_button(self):
@@ -605,6 +610,7 @@ class GameAdAutomation():
     def naive_algo(self):
         print("INFO: naive_algo")
         self.__get_initial_scene()
+        #TODO: image logging(message, image)
         while True:
             while True:
                 res = self.__push_ad_button()
