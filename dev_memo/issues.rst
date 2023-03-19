@@ -62,7 +62,8 @@ gaa_lib
 dl_image_manager
 ----------------------
 
-4. bin/autoclose.pyの実装
+
+
 
 実施済みのissue
 ====================
@@ -262,6 +263,22 @@ gaa_lib
 
 dl_image_manager
 -------------------
+
+4. bin/auto_project.pyの実装
+　→　完了::
+  
+  commit 07cbbca8129005f53ea1f3e5d19e1065708060f7 (HEAD -> master, origin/master)
+  Author: kazuhiro MIYASHITA <miyakz1192@gmail.com>
+  Date:   Thu Mar 16 14:39:18 2023 +0000
+  
+      bug fix in file/number_suffix.py
+  
+  commit cd70521b34bc9c8f4a7e8e829bb9a021320db4dc (HEAD -> master, origin/master, origin/HEAD)
+  Author: kazuhiro MIYASHITA <miyakz1192@gmail.com>
+  Date:   Thu Mar 16 14:42:23 2023 +0000
+  
+      issue4 fix(bin/auto_project.py)
+  
 
 3. bin/merge_project.pyで引数に受けたテキストファイルを追加のsrcとして認識するようにする。
  →　完了::
