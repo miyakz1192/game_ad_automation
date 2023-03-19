@@ -15,11 +15,11 @@ class GAALogViewerView(tk.Tk):
         #using PIL for displaying Jpeg image
         img1 = Image.open(open('./default.jpg', 'rb'))
         img1.thumbnail((500, 500), Image.ANTIALIAS)
-        img1 = ImageTk.PhotoImage(img1)  
+        img1 = ImageTk.PhotoImage(img1)
         canvas.create_image(  #image on canvas
             0,  # x
             0,  # y
-            image=img1, 
+            image=img1,
             anchor="nw",  # place origin is North West
         )
         return canvas, img1
@@ -45,13 +45,10 @@ class GAALogViewerView(tk.Tk):
         self.canvases.append(can)
         self.images.append(img)
 
-        self.logshow = ScrolledText(self, wrap=tk.WORD, width=100, height=5)
+        self.logtext = ScrolledText(self, wrap=tk.WORD, width=100, height=5)
 
         #Log List Box
         self.log_list = tk.Listbox(self, bd=1)
-        #set sample data
-        for i in range(100):
-            self.log_list.insert("end", "log=%d" % i)
 
         # Scrollbar
         self.scrollbar = tk.Scrollbar(
@@ -60,23 +57,55 @@ class GAALogViewerView(tk.Tk):
             command=self.log_list.yview)
         self.log_list['yscrollcommand'] = self.scrollbar.set
 
-        self.log_list.pack(side='left',fill="y",expand = False)
-        self.scrollbar.pack(side='left', fill="y",expand = False)
-        self.logshow.pack(side="bottom",expand=True)
-        self.canvases[0].pack(side='left',fill="both",expand = True)
-        self.canvases[1].pack(side='top',fill="both",expand = True)
-        self.canvases[2].pack(side='bottom',fill="both",expand = True)
+        self.log_list.pack(side='left',fill="y",expand=False)
+        self.scrollbar.pack(side='left', fill="y",expand=False)
+        self.logtext.pack(side="bottom",expand=True)
+        self.canvases[0].pack(side='left',fill="both",expand=True)
+        self.canvases[1].pack(side='top',fill="both",expand=True)
+        self.canvases[2].pack(side='bottom',fill="both",expand=True)
 
-        #expand log list box to North and South
-        #self.log_list.grid(row=0, column=0, sticky=tk.N+tk.S)
-        #self.scrollbar.grid(row=0, column=1, sticky=(tk.N, tk.S))
-        #self.canvases[0].grid(row=0, column=2)
-        #self.canvases[1].grid(row=0, column=3)
-        #self.canvases[2].grid(row=0, column=4)
+        self.log_list.bind("<<ListboxSelect>>", self.__show_selected_log)
 
-        #self.grid_columnconfigure(1, weight=1)
-        #self.grid_rowconfigure(1, weight=1)
-        
+        self.__read_log_into_log_list()
+
+    def __show_selected_log(self,event):
+        #TODO: real routine
+        index = event.widget.curselection()
+        log   = event.widget.get(index)
+        print(log)
+
+        self.logtext.delete("1.0", tk.END) #delete all from logtext
+        self.logtext.insert("1.0", log)
+
+        for c in self.canvases:
+            c.delete("all")
+
+
+        if log == "log=10":
+            #case of read from new
+#            for c in self.canvases:
+#                img1 = Image.open(open('./default.jpg', 'rb'))
+#                #if image or tubnail size bigger than canvas size
+#                #canvas would not show image
+#                #img1.thumbnail((500, 500), Image.ANTIALIAS)
+#                img1.thumbnail((200, 200), Image.ANTIALIAS)
+#                img1 = ImageTk.PhotoImage(img1)
+#                c.create_image(0,0,image=img1,anchor=tk.NW)
+#                self.images.append(img1)
+#        self.images = []
+
+            #case of reuse
+            i = 0
+            for c in self.canvases:
+                c.create_image(0,0, image=self.images[i], anchor=tk.NW)
+                i += 1
+
+    def __read_log_into_log_list(self):
+        #set sample data
+        #TODO: real log model
+        for i in range(100):
+            self.log_list.insert("end", "log=%d" % i)
+
 
 # アプリを起動する
 if __name__ == "__main__":
