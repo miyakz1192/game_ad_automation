@@ -5,6 +5,13 @@ GAA改造日記
 全体的に日記をすべてこちらに集約することにする。
 すでにバラけたものを集約すること無く、新しい情報からこちらに集約する。
 
+2023/03/14
+============
+
+issue 25を完了。issue 4を実施中。
+
+issue 5を実施したら、しばらく本当に中断したいなぁ(DL書籍などを学習)。
+
 2023/03/12
 ===========
 
@@ -27,7 +34,7 @@ images/auto_gen/close/true  : GAAが真のcloseと判断したもの
 images/auto_gen/close/false : GAAが偽のcloseと判断したもの
 なお、各ディレクトリに配置されるファイル名はx.jpgとする(xは0開始の番号)。
 
-dl_image_manager/bin/のautoclose.pyを実行することで、scrcpyからautoclose.tar.gzがダウンロードされ、~/dl_image_manager/images/autocloseが生成され、projects_store/common配下に自動追加されたautocloseのprojectが生成されて、配置される。また、このプログラムの処理結果として、configディレクトリにadditional_merge_target_src_projects.txtを生成する(これがmerge_project.pyで利用される※ merge_project.pyはこのtxtファイルを追加のsrcとして処理するように改造が必要。あとmerge_project.pyではtarget srcの重複を排除しておく処理を念の為追加しておく)。
+dl_image_manager/bin/のauto_project.pyを実行することで、scrcpyからautoclose.tar.gzがダウンロードされ、~/dl_image_manager/images/autocloseが生成され、projects_store/common配下に自動追加されたautocloseのprojectが生成されて、配置される。また、このプログラムの処理結果として、configディレクトリにadditional_merge_target_src_projects.txtを生成する(これがmerge_project.pyで利用される※ merge_project.pyはこのtxtファイルを追加のsrcとして処理するように改造が必要。あとmerge_project.pyではtarget srcの重複を排除しておく処理を念の為追加しておく)。
 
 dl_image_managerではscrcpyサーバの/home/a/game_ad_automation/autocloseをtar.gzで固めて、自分自身の~/dl_image_manager/に落としてくる。
 
