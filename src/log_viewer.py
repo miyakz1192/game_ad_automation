@@ -4,6 +4,8 @@ import tkinter as tk
 from tkinter.scrolledtext import ScrolledText
 from PIL import Image, ImageTk
 
+from collections import defaultdict
+
 class GAALogViewerView(tk.Tk):
 
     def __init_canvas(self, width=200, height=200):
@@ -16,12 +18,34 @@ class GAALogViewerView(tk.Tk):
         img1 = Image.open(open('./default.jpg', 'rb'))
         img1.thumbnail((500, 500), Image.ANTIALIAS)
         img1 = ImageTk.PhotoImage(img1)
-        canvas.create_image(  #image on canvas
+
+        image_id = 0
+        image_id = canvas.create_image(  #image on canvas
             0,  # x
             0,  # y
             image=img1,
             anchor="nw",  # place origin is North West
         )
+        print("IMAGEID=%d" % image_id)
+
+        self.tkimage["gaa_log_id_sample1"] = image_id
+        self.images.append(img1)
+
+        img1 = Image.open(open('./default2.jpg', 'rb'))
+        img1.thumbnail((500, 500), Image.ANTIALIAS)
+        img1 = ImageTk.PhotoImage(img1)
+
+        image_id = 0
+        image_id = canvas.create_image(  #image on canvas
+            0,  # x
+            0,  # y
+            image=img1,
+            anchor="nw",  # place origin is North West
+        )
+
+        self.tkimage["gaa_log_id_sample2"] = image_id
+        self.images.append(img1)
+        print("IMAGEID=%d" % image_id)
         return canvas, img1
 
     def __init__(self):
@@ -31,19 +55,20 @@ class GAALogViewerView(tk.Tk):
         self.geometry("800x600")
 
         self.canvases = []
+        self.tkimage = defaultdict(int)
         self.images = []
 
         can, img = self.__init_canvas(400, 800)
         self.canvases.append(can)
-        self.images.append(img)
+#        self.images.append(img)
 
         can, img = self.__init_canvas(100,100)
         self.canvases.append(can)
-        self.images.append(img)
+#        self.images.append(img)
 
         can, img = self.__init_canvas(100,100)
         self.canvases.append(can)
-        self.images.append(img)
+#        self.images.append(img)
 
         self.logtext = ScrolledText(self, wrap=tk.WORD, width=100, height=5)
 
@@ -77,8 +102,8 @@ class GAALogViewerView(tk.Tk):
         self.logtext.delete("1.0", tk.END) #delete all from logtext
         self.logtext.insert("1.0", log)
 
-        for c in self.canvases:
-            c.delete("all")
+#        for c in self.canvases:
+#            c.delete("all")
 
 
         if log == "log=10":
@@ -97,7 +122,12 @@ class GAALogViewerView(tk.Tk):
             #case of reuse
             i = 0
             for c in self.canvases:
-                c.create_image(0,0, image=self.images[i], anchor=tk.NW)
+#                c.create_image(0,0, image=self.images[i], anchor=tk.NW)
+                #moveto is fast???
+                print(self.tkimage["gaa_log_id_sample1"])
+                #c.moveto(self.tkimage["gaa_log_id_sample1"],1,1)
+                #c.moveto(self.tkimage["gaa_log_id_sample2"],1,1)
+                c.lift(self.tkimage["gaa_log_id_sample1"])
                 i += 1
 
     def __read_log_into_log_list(self):
