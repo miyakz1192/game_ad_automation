@@ -5,6 +5,83 @@ GAA改造日記
 全体的に日記をすべてこちらに集約することにする。
 すでにバラけたものを集約すること無く、新しい情報からこちらに集約する。
 
+2023/03/20
+================
+
+GAAのissue5を実装しよう。
+GUIの入れ物は出来た感じがする。作りは超雑だけど、これでまずまず
+使い物にはなりそう。ただし、tkinterのCanvasのcreate_imageが遅くて大量にログを解析するなどのシーンだとかなり使用につらそう。。
+
+https://stackoverflow.com/questions/69164390/tkinter-image-rendering-is-slow-how-should-i-improve-it
+
+ここにアルように、いちいちCanvasのimageを作りなおしちゃいけないと書いてあるね。create_imageしたものをハッシュかなにかで一旦とっておいて、次回再度同じイメージを再描画するときは、canvas.movetoを使うと。
+
+ただ、今回の場合はliftを使うと良いようだ。log_viewerではログを読みつつ、一度create_imageしたものを覚えておき、再度読みこもうとした場合はそれを使う。再描画する場合はliftを使うようにする。大量にcanvasに画像が読み込まれることになるがそれはそれで。
+
+GUIの外見えの所の実験は完了で、描画がちゃんと出来そうな見通しがたったので、GAALogModelを作ることにする。
+
+いきなりは難しそうなので、GAALogModelの設計を次に取り組むことにする。
+
+2023/03/16
+==============
+
+dl_image_manager issue4を実施。→　完了::
+
+  commit 07cbbca8129005f53ea1f3e5d19e1065708060f7 (HEAD -> master, origin/master)
+  Author: kazuhiro MIYASHITA <miyakz1192@gmail.com>
+  Date:   Thu Mar 16 14:39:18 2023 +0000
+  
+      bug fix in file/number_suffix.py
+  
+  commit cd70521b34bc9c8f4a7e8e829bb9a021320db4dc (HEAD -> master, origin/master, origin/HEAD)
+  Author: kazuhiro MIYASHITA <miyakz1192@gmail.com>
+  Date:   Thu Mar 16 14:42:23 2023 +0000
+  
+      issue4 fix(bin/auto_project.py)
+
+その次はGAA issue5を実施。
+
+GAA issue5が完了したら再勉強などのために本当に中断。
+
+__wait_scene_commonで時々意図した遷移にならない場合があるが、try_countがデフォルトの1なので、もう少し頑張って3位にしたほうが良い説。いまだと、waitという割にはwaitしていない気がする。
+
+GAA issue5のメモ(image loggingとlogviewer)
+--------------------------------------------------
+
+auto_project.pyによって、GAAが自分で真のcloseと判断したclose画像をいつでも追加で学習出来るようになった。
+
+しかし、GAAの実行結果がたまにおかしいコトもあり、実行履歴を振り返ることでさらなる改善に繋げたいコトがある。
+
+その場合に通常の文字列ベースでのログに加えて、どのような画像をGAAが見て、何をclose/adbuttonと判断したかを記録に取る必要がある。
+
+また、単に記録を取っただけだとわけわからんので、それを
+わかりやすく表示してやる必要がある。
+
+最初にprintベースで表示していたログをpython標準のloggerなどを使って時刻なども表示するようにする。
+
+次に、image loggingとして、5W1H?で、いつ(状態遷移)、どのようなゲーム画像を見て、何をclose/adbuttonと判断したかを保存出来るようにする。
+
+また、image loggingの結果を画面にパッと表示できるようにもしたい。
+
+そうすれば日中、放っておいてGAAを流して別のことをやるみたいなことも安心して出来るようになるだろう。
+
+ログ表示のイメージとしては、カーソルでログを辿って行くとimage loggingで保存されていない普通のログはそのままで、image loggingで保存されている特殊なログの場合は、画面の右に表示されるというのが良いと思われる。
+
+画面の左側にテキストのログが並び、カーソルを上下させていけば、画面右にimage loggingの場合は単数/複数の画像がぱっと表示されるというのが良いかも
+
+image loggingに渡す画像が複数の場合がアル。::
+
+  a@scrcpy:~/game_ad_automation$ grep "TODO: image log" src/main.py 
+          #TODO: image logging(message="get close pos", screen_shot_image, res)
+              #TODO: image logging(message="best close pos", screen_shot_image, res)
+                  #TODO: image logging(message="push ad button", screen_shot_image, [button_res]) 
+              #TODO: image logging(message ,initial_image, target_image, eq_score)
+          #TODO: image logging(message, image)
+  a@scrcpy:~/game_ad_automation$ 
+
+  
+  
+
 2023/03/14
 ============
 
