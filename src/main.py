@@ -24,6 +24,8 @@ from detection_result import *
 from easy_sshscp import *
 from number_suffix import *
 
+from image_log import *
+
 import torch
 import json
 
@@ -33,6 +35,15 @@ from matplotlib import pyplot as plt
 
 import re
 import sys
+
+
+##### INIT GAALogger #####
+global_gaa_logger = GAALogger()
+
+def gaa_info(message, screen_shot_image, dres):
+    global global_gaa_logger
+    global_gaa_logger.info(message, screen_shot_image, dres)
+##########################
 
 def big_log(message):
     print("==========================================")
@@ -121,14 +132,14 @@ class ScreenShotImage():
 
     def extract_left_upper(self, width=400, height=400, remain_height=200):
         left_upper = self.image[0:height,0:width]
-        left_upper[remain_height:height, 0:width] = 0
+        #left_upper[remain_height:height, 0:width] = 0
         return ScreenShotImage(left_upper)
 
     def extract_right_upper(self, width=400, height=400, remain_height=200):
         ymax = self.image.shape[0]
         xmax = self.image.shape[1]
         right_upper = self.image[0:height,xmax-width:xmax]
-        right_upper[remain_height:height, 0:width] = 0
+        #right_upper[remain_height:height, 0:width] = 0
         return ScreenShotImage(right_upper)
 
     #start_pos = (x,y) #tuple
@@ -192,10 +203,19 @@ class Mp4File(GAAFile):
         super().__init__(file_name)
 
     def get_duration(self):
-        #ffprobe -v quiet -print_format json -show_format -show_streams  -i /tmp/a.mp4
-        command = ["ffprobe", "-v", "quiet",  "-print_format", "json", "-show_streams", "-i", self.file_name]
-        res = subprocess.run(command, capture_output=True, text=True).stdout
-        return float(json.loads(res)["streams"][0]["duration"])
+        dur = 0.0
+        for i in range(5):
+            try:
+                print("get_duration")
+                #ffprobe -v quiet -print_format json -show_format -show_streams  -i /tmp/a.mp4
+                command = ["ffprobe", "-v", "quiet",  "-print_format", "json", "-show_streams", "-i", self.file_name]
+                res = subprocess.run(command, capture_output=True, text=True).stdout
+                print(res)
+                dur = float(json.loads(res)["streams"][0]["duration"])
+            except:
+                print("get_duration err retry")
+        return dur
+
 
     def get_last_sec(self):
         return int(self.get_duration())
@@ -420,6 +440,7 @@ class PytorchService(Service):
         #res.print()
 
         self.debug_result_show(screen_shot_image, res)
+
         #TODO: image logging(message="get close pos", screen_shot_image, res)
 
         best_close = self.__select_best_close(res)
@@ -496,8 +517,8 @@ class CyclicAdButtonPusher:
                 self.__window_coordinate_system_to_normal(button_res)
                 #print("INFO: __window_coordinate_system_to_normal")
                 #button_res.print()
-                self.pytorch_s.debug_result_show(screen_shot_image, [button_res], file_name="./adbutton_debug_res.jpg")
-                #TODO: image logging(message="push ad button", screen_shot_image, [button_res]) 
+
+                gaa_info("push ad button", screen_shot_image, [button_res])
                 if button_res.score < 0.1:
                     print("INFO: this ad button ignored due to low score")
                     button_res = None
@@ -616,6 +637,9 @@ class GameAdAutomation():
                 res = self.__push_ad_button()
                 if res == self.RES_SCENE_CHANGED_INITIAL_TO_AD:
                     break
+
+            print("INFO: sleep 60")
+            time.sleep(60)
 
             while True:
                 res = self.__push_close_button()
