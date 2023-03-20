@@ -8,21 +8,24 @@ import pickle
 import uuid
 import datetime
 
+#this calss is entity of image log(log with image)
 class GAAImageLogEntry:
-    def __init__(self, cv2_image=None, dres=None):
+    def __init__(self, log_id=None, cv2_image=None, dres=None):
         self.cv2_image = cv2_image
         self.dres = dres
+        self.log_id = log_id
 
     def save(self, file_name):
         with open(file_name, 'wb') as f:
-            data = [self.cv2_image, self.dres]
+            data = [self.log_id, self.cv2_image, self.dres]
             pickle.dump(data, f)
 
     def load(self, file_name):
         with open(file_name, 'rb') as f:
             data = pickle.load(f)
-            self.cv2_image = data[0]
-            self.dres = data[1]
+            self.log_id    = data[0]
+            self.cv2_image = data[1]
+            self.dres      = data[2]
 
 class GAALogger:
     def __init__(self, log_dir="./gaa_log/", debug_result_show=True, wait_sec=3):
@@ -65,7 +68,7 @@ class GAALogger:
         img = cv2.imread(self.temp_file_name)
 
         ile_file_name = self.image_log_dir + log_id + ".data"
-        GAAImageLogEntry(img, dres).save(ile_file_name)
+        GAAImageLogEntry(log_id, img, dres).save(ile_file_name)
 
         if self.debug_result_show is True:
             cv2.imshow(self.temp_file_name , img)
@@ -103,3 +106,22 @@ class GAALogger:
     def error(self, message, screen_shot_image=None, dres=None):
         self.__log(message, severity="ERROR", screen_shot_image=screen_shot_image, dres=dres)
 
+
+class GAALoggerModel(GAALogger):
+    def __init__(self):
+        super().__init__() #initialize super with default param
+        with open(self.log_file_name) as f:
+            self.log_list = f.readlines()
+
+
+    def get_image_log(self, log_text):
+        temp = log_text.split(self.image_logging_uuid_str)
+
+        if len(temp) == 1:
+            return None
+
+        res = GAAImageLogEntry()
+        uuid_str = temp[1].rstrip()
+        res.load(self.image_log_dir + uuid_str + ".data")
+
+        return res

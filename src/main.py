@@ -215,7 +215,7 @@ class Mp4File(GAAFile):
                 #ffprobe -v quiet -print_format json -show_format -show_streams  -i /tmp/a.mp4
                 command = ["ffprobe", "-v", "quiet",  "-print_format", "json", "-show_streams", "-i", self.file_name]
                 res = subprocess.run(command, capture_output=True, text=True).stdout
-                gaa_info(res)
+                print(res)
                 dur = float(json.loads(res)["streams"][0]["duration"])
             except:
                 gaa_warn("get_duration err retry")
