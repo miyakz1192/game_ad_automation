@@ -25,7 +25,7 @@ class GAAImageLogEntry:
             self.dres = data[1]
 
 class GAALogger:
-    def __init__(self, log_dir="./gaa_log/", debug_result_show=True, wait_sec=10):
+    def __init__(self, log_dir="./gaa_log/", debug_result_show=True, wait_sec=3):
         self.debug_result_show = debug_result_show
         self.log_dir = log_dir
         self.image_log_dir = self.log_dir + "/imagelog/"
@@ -89,8 +89,10 @@ class GAALogger:
         with open(self.log_file_name, "a") as f:
             if image_log_id is None:
                 print("[%s] %s %s" % (dt_now, severity, message), file=f)
+                print("[%s] %s %s" % (dt_now, severity, message))
             else:
                 print("[%s] %s %s %s%s" % (dt_now, severity, message, self.image_logging_uuid_str, image_log_id), file=f)
+                print("[%s] %s %s %s%s" % (dt_now, severity, message, self.image_logging_uuid_str, image_log_id))
 
     def info(self, message, screen_shot_image=None, dres=None):
         self.__log(message, severity="INFO", screen_shot_image=screen_shot_image, dres=dres)

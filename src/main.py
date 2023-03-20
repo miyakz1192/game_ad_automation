@@ -40,22 +40,30 @@ import sys
 ##### INIT GAALogger #####
 global_gaa_logger = GAALogger()
 
-def gaa_info(message, screen_shot_image, dres):
+def gaa_info(message, screen_shot_image=None, dres=None):
     global global_gaa_logger
     global_gaa_logger.info(message, screen_shot_image, dres)
+
+def gaa_warn(message, screen_shot_image=None, dres=None):
+    global global_gaa_logger
+    global_gaa_logger.warn(message, screen_shot_image, dres)
+
+def gaa_error(message, screen_shot_image=None, dres=None):
+    global global_gaa_logger
+    global_gaa_logger.error(message, screen_shot_image, dres)
 ##########################
 
 def big_log(message):
-    print("==========================================")
-    print("==========================================")
-    print(message)
-    print("==========================================")
-    print("==========================================")
+    gaa_info("==========================================")
+    gaa_info("==========================================")
+    gaa_info(message)
+    gaa_info("==========================================")
+    gaa_info("==========================================")
 
 def mid_log(message):
-    print("==========================================")
-    print(message)
-    print("==========================================")
+    gaa_info("==========================================")
+    gaa_info(message)
+    gaa_info("==========================================")
 
 
 #necessary environments values
@@ -73,10 +81,7 @@ class Service:
         return os.environ[self.name.upper() + "_HOST"]
 
     def show(self):
-        print("[TRACE] " + self.name + " service configuration")
-        #print(self.user())
-        #print(self.passwd())
-        #print(self.host())
+        gaa_info("[TRACE] " + self.name + " service configuration")
 
     def ssh(self, cmd):
         #sshpass -p <passwd> ssh -o StrictHostKeyChecking=no <user>@<host> <cmd>
@@ -206,14 +211,14 @@ class Mp4File(GAAFile):
         dur = 0.0
         for i in range(5):
             try:
-                print("get_duration")
+                gaa_info("get_duration")
                 #ffprobe -v quiet -print_format json -show_format -show_streams  -i /tmp/a.mp4
                 command = ["ffprobe", "-v", "quiet",  "-print_format", "json", "-show_streams", "-i", self.file_name]
                 res = subprocess.run(command, capture_output=True, text=True).stdout
-                print(res)
+                gaa_info(res)
                 dur = float(json.loads(res)["streams"][0]["duration"])
             except:
-                print("get_duration err retry")
+                gaa_warn("get_duration err retry")
         return dur
 
 
@@ -236,7 +241,7 @@ class ScrcpyService(Service):
         try:
             subprocess.run(command , shell=True, timeout=timeout)
         except subprocess.TimeoutExpired as e:
-            print("INFO: timed out with %d" % (str(timeout)))
+            gaa_warn("INFO: timed out with %d" % (str(timeout)))
 
     def __call_scrcpy_cmd_with_retry(self):
         #command = ["/usr/local/bin/scrcpy", "--tcpip=" + self.phone(), "--verbosity=verbose", "--record=%s" % (self.TEMP_MP4_PATH)]
@@ -255,7 +260,7 @@ class ScrcpyService(Service):
             if mp4.exists_file() is True:
                 #print("INFO: OK")
                 break
-            print("ERROR: mp4 file get failed from scrcpy retry")
+            gaa_warn("ERROR: mp4 file get failed from scrcpy retry")
 
     def __call_ffmpeg_cmd(self, mp4_file, jpg_file):
         for i in range(self.RETRY_COUNT_CMD):
@@ -267,7 +272,7 @@ class ScrcpyService(Service):
             if res == 0 and jpg_file.exists_file() is True:
                 return True
             else:
-                print("ERROR: ffmpeg returned not 0(%d). retry" % (res))
+                gaa_warn("ERROR: ffmpeg returned not 0(%d). retry" % (res))
 
         return False
 
@@ -276,7 +281,7 @@ class ScrcpyService(Service):
         retry_count = 0
         ok_flg = False
         while ok_flg == False:
-            print("TRACE: get_screen_shot(try=%d) with %s" % (retry_count, file_name))
+            gaa_warn("TRACE: get_screen_shot(try=%d) with %s" % (retry_count, file_name))
             self.__call_scrcpy_cmd_with_retry()
             time.sleep(5)
             mp4 = Mp4File(self.TEMP_MP4_PATH)
@@ -289,31 +294,31 @@ class ScrcpyService(Service):
         return ScreenShotFile(file_name)
 
     def touch_position(self, pos):
-        print("TRACE: touch position")
+        gaa_info("TRACE: touch position")
 
         if pos is None:
-            print("INFO: touch_position called with None. may be touch position will be not found")
+            gaa_info("INFO: touch_position called with None. may be touch position will be not found")
             return
 
         for try_count in range(self.RETRY_COUNT_SCRCPY_CMD):
-            print("TRACE: touch position=%d,%d" % (pos.rect.x, pos.rect.y))
+            gaa_info("TRACE: touch position=%d,%d" % (pos.rect.x, pos.rect.y))
     #        #scrcpy --tcpip=192.168.110.178:38665 --verbosity=verbose & sleep 10 ; echo "152,192" > mdown_input_pipe
             #TODO: retry if connection error
 
             command = ["scrcpy", "--tcpip=" + self.phone(), "--verbosity=verbose"]
             proc = subprocess.Popen(command)
-            print("[DEBUG] wait for %d" % (self.WAIT_TIME_FOR_WIRELESS_DEBUG_DIALOG_VANISHED))
+            gaa_info("[DEBUG] wait for %d" % (self.WAIT_TIME_FOR_WIRELESS_DEBUG_DIALOG_VANISHED))
             time.sleep(self.WAIT_TIME_FOR_WIRELESS_DEBUG_DIALOG_VANISHED)
 
             if proc.poll() is None: # scrcpy command is still active
-                print("[DEBUG] touch pos!!!")
+                gaa_info("[DEBUG] touch pos!!!")
                 command = "echo " + str(int(pos.rect.x+pos.rect.width/2)) + "," + str(int(pos.rect.y+pos.rect.height/2)) + " > " + "mdown_input_pipe"
                 self.__cmd_with_timeout(command)
                 time.sleep(5)
                 proc.send_signal(SIGINT)
                 break
             else: #scrcpy command already vanished due to some reason
-                print("ERROR: scrcpy already ended retry")
+                gaa_warn("ERROR: scrcpy already ended retry")
 
     def wait_screen_changed(self, before_screen_shot_f):
         after_screen_shot_f = self.get_screen_shot(file_name="/tmp/after.jpg")
@@ -321,11 +326,11 @@ class ScrcpyService(Service):
         after_image  = after_screen_shot_f.load()
 
         while before_image.eq(after_image):
-            print("INFO: before_image and after_image are eq")
+            gaa_info("INFO: before_image and after_image are eq")
             time.sleep(5)
             after_screen_shot_f = self.get_screen_shot(file_name="/tmp/after.jpg")
             after_image  = after_screen_shot_f.load()
-        print("INFO: before_image and after_image are CHANGED!!!")
+        gaa_info("INFO: before_image and after_image are CHANGED!!!")
 
 
 
@@ -371,7 +376,7 @@ class PytorchService(Service):
 
         #plt.savefig("./debug_result_show.jpg")
         plt.savefig(file_name)
-        print("[DEBUG] wait for input")
+        gaa_info("[DEBUG] wait for input")
 
         img = cv2.imread(file_name)
         cv2.imshow(file_name , img)
@@ -400,8 +405,8 @@ class PytorchService(Service):
 
     #WARN: this code is not thread safe!!
     def get_close_position(self, screen_shot_file):
-        print("[DEBUG] get_close_position")
-        print(screen_shot_file.file_path)
+        gaa_info("[DEBUG] get_close_position")
+        gaa_info(screen_shot_file.file_path)
 
         #extract left upper and right upper from screen_shot_file
         screen_shot_image = screen_shot_file.load()
@@ -441,15 +446,13 @@ class PytorchService(Service):
 
         self.debug_result_show(screen_shot_image, res)
 
-        #TODO: image logging(message="get close pos", screen_shot_image, res)
+        gaa_info("get close pos", screen_shot_image, res)
 
         best_close = self.__select_best_close(res)
 
         #for debug_result_show only
         if best_close is not None:
-            print("INFO: best close found !!!!!!!!!!!!!")
-            self.debug_result_show(screen_shot_image, [best_close])
-            #TODO: image logging(message="best close pos", screen_shot_image, res)
+            gaa_info("INFO: best close found !!!!!!!!!!!!!", screen_shot_image, [best_close])
         ##########################
 
         return best_close
@@ -488,10 +491,10 @@ class CyclicAdButtonPusher:
 
     #TODO: now implemantaion only support "virtical"
     def push(self, screen_shot_file, direction="virtical"):
-        print("INFO: push Ad Button start")
+        gaa_info("INFO: push Ad Button start")
         screen_shot_image = screen_shot_file.load()
         pos = self.__get_next_pos(screen_shot_image)
-        print("INFO: PUSH POS => [%d]@%s" % (self.counter,str(pos)))
+        gaa_info("INFO: PUSH POS => [%d]@%s" % (self.counter,str(pos)))
         adbutton_img = screen_shot_image.extract(pos, self.window_size)
         adbutton_f = ScreenShotFile("/tmp/adbutton.jpg")
         adbutton_f.associate_image(adbutton_img)
@@ -512,7 +515,7 @@ class CyclicAdButtonPusher:
             temp = list(filter(lambda x: x.label == "adbutton", res.res))
             if len(temp) > 0:
                 button_res =  temp[0]
-                print("INFO: Ad Button info")
+                gaa_info("INFO: Ad Button info")
                 #button_res.print()
                 self.__window_coordinate_system_to_normal(button_res)
                 #print("INFO: __window_coordinate_system_to_normal")
@@ -520,11 +523,11 @@ class CyclicAdButtonPusher:
 
                 gaa_info("push ad button", screen_shot_image, [button_res])
                 if button_res.score < 0.1:
-                    print("INFO: this ad button ignored due to low score")
+                    gaa_info("INFO: this ad button ignored due to low score")
                     button_res = None
 
         self.counter += 1
-        print("INFO: push Ad Button end")
+        gaa_info("INFO: push Ad Button end")
         return button_res
 
 
@@ -553,6 +556,8 @@ class GameAdAutomation():
         big_log("GET INITIAL SCENE")
         self.initial_screen_shot_file = self.scrcpy_s.get_screen_shot(file_name="/tmp/gaa_initial.jpg")
 
+        gaa_info("initial scene", self.initial_screen_shot_file.load())
+
     def __wait_scene_initial_to_ad(self):
         res = self.__wait_scene_common("WAIT FOR SCENE INITIAL TO AD", False)
         self.state = self.STATE_AD
@@ -570,12 +575,15 @@ class GameAdAutomation():
             target_screen_shot_file = self.scrcpy_s.get_screen_shot(file_name="/tmp/gaa_wait_scene_common_target.jpg")
             initial_image = self.initial_screen_shot_file.load()
             target_image = target_screen_shot_file.load()
-            #TODO: image logging(message ,initial_image, target_image, eq_score)
+
+            gaa_info("initial image", initial_image)
+            gaa_info("target image", target_image)
+
             if initial_image.eq(target_image) == finish_cond:
-                print("INFO: initial_image.eq(target_image) == %s" % (str(finish_cond)))
+                gaa_info("INFO: initial_image.eq(target_image) == %s" % (str(finish_cond)))
                 return True
 
-        print("INFO: initial_image.eq(target_image) != %s" % (str(finish_cond)))
+        gaa_info("INFO: initial_image.eq(target_image) != %s" % (str(finish_cond)))
         return False
 
     def __push_ad_button(self):
@@ -629,16 +637,15 @@ class GameAdAutomation():
         return self.RES_SCENE_CHANGED_AD_TO_INITIAL
     
     def naive_algo(self):
-        print("INFO: naive_algo")
+        gaa_info("INFO: naive_algo")
         self.__get_initial_scene()
-        #TODO: image logging(message, image)
         while True:
             while True:
                 res = self.__push_ad_button()
                 if res == self.RES_SCENE_CHANGED_INITIAL_TO_AD:
                     break
 
-            print("INFO: sleep 60")
+            gaa_info("INFO: sleep 60")
             time.sleep(60)
 
             while True:
@@ -646,14 +653,14 @@ class GameAdAutomation():
                 if res == self.RES_SCENE_CHANGED_AD_TO_INITIAL:
                     break
 
-            print("INFO: sleep 10")
+            gaa_info("INFO: sleep 10")
             time.sleep(10)
 
 
 def main():
-    print("INFO: start game ad automation !!!")
+    gaa_info("INFO: start game ad automation !!!")
     GameAdAutomation().naive_algo()
-    print("INFO: end game ad automation !!!")
+    gaa_info("INFO: end game ad automation !!!")
 
 def for_debug_issue18():
     initial_f = ScreenShotFile("/home/a/game_ad_automation/bad_case/issue_18/gaa_initial.jpg")
