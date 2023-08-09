@@ -10,6 +10,8 @@ from image_log import *
 
 import cv2
 
+import sys
+
 #thanks! https://qiita.com/derodero24/items/f22c22b22451609908ee
 def cv2pil(image):
     ''' OpenCV型 -> PIL型 '''
@@ -55,8 +57,10 @@ class GAALogViewerView(tk.Tk):
     def __main_canvas(self):
         return self.canvases[0]
 
-    def __init__(self):
+    def __init__(self, search_word=None):
         super().__init__()
+
+        self.search_word = search_word
 
         self.title("GAA LogVier")
         self.geometry("800x600")
@@ -110,13 +114,34 @@ class GAALogViewerView(tk.Tk):
         self.canvases[2].pack(side='bottom',fill="both",expand=True)
 
         self.log_list.bind("<<ListboxSelect>>", self.__show_selected_log)
+        self.bind("<KeyPress>", self.__key_event)
 
         self.gaa_logger_model = GAALoggerModel()
         self.__read_log_into_log_list()
 
+    def __key_event(self, event):
+        if event.keysym != "w":
+            return
+
+        print("INFO: write image")
+        index = event.widget.curselection()
+        log   = event.widget.get(index)
+        print("Line=%d" % index)
+
+        img_log = self.gaa_logger_model.get_image_log(log)
+        if img_log is None:
+            print("INFO: image not found")
+            return
+
+        img_log.save_image("./image_box/" + img_log.log_id + ".jpg")
+        print("INFO: saved")
+
+
     def __show_selected_log(self,event):
         index = event.widget.curselection()
         log   = event.widget.get(index)
+
+        print("Line=%d" % index)
 
         self.logtext.delete("1.0", tk.END) #delete all from logtext
         self.logtext.insert("1.0", log)
@@ -173,11 +198,22 @@ class GAALogViewerView(tk.Tk):
 #                i += 1
 
     def __read_log_into_log_list(self):
+        count = 0
         for i in self.gaa_logger_model.log_list:
-            self.log_list.insert("end", i)
+            if self.search_word is not None:
+                if self.search_word in i:
+                    self.log_list.insert("end", i)
+                    count += 1
+            else:
+                self.log_list.insert("end", i)
+                count += 1
+        print(f"INFO: read log %d lines" % (count))
 
 
 # アプリを起動する
 if __name__ == "__main__":
-    app = GAALogViewerView()
+    search_word = None
+    if len(sys.argv) == 2:
+        search_word = sys.argv[1]
+    app = GAALogViewerView(search_word)
     app.mainloop()

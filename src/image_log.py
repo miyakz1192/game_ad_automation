@@ -20,6 +20,9 @@ class GAAImageLogEntry:
             data = [self.log_id, self.cv2_image, self.dres]
             pickle.dump(data, f)
 
+    def save_image(self, file_name):
+        cv2.imwrite(file_name, self.cv2_image)
+
     def load(self, file_name):
         with open(file_name, 'rb') as f:
             data = pickle.load(f)
