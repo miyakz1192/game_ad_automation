@@ -12,6 +12,12 @@ import cv2
 
 import sys
 
+import argparse
+parser = argparse.ArgumentParser()
+parser.add_argument("--search_word", type=str, default=None)
+parser.add_argument("--log_dir", type=str, default="./gaa_log/")
+args = parser.parse_args()
+
 #thanks! https://qiita.com/derodero24/items/f22c22b22451609908ee
 def cv2pil(image):
     ''' OpenCV型 -> PIL型 '''
@@ -57,7 +63,7 @@ class GAALogViewerView(tk.Tk):
     def __main_canvas(self):
         return self.canvases[0]
 
-    def __init__(self, search_word=None):
+    def __init__(self, search_word=None, log_dir="./gaa_log/"):
         super().__init__()
 
         self.search_word = search_word
@@ -116,7 +122,7 @@ class GAALogViewerView(tk.Tk):
         self.log_list.bind("<<ListboxSelect>>", self.__show_selected_log)
         self.bind("<KeyPress>", self.__key_event)
 
-        self.gaa_logger_model = GAALoggerModel()
+        self.gaa_logger_model = GAALoggerModel(log_dir=log_dir)
         self.__read_log_into_log_list()
 
     def __key_event(self, event):
@@ -212,8 +218,5 @@ class GAALogViewerView(tk.Tk):
 
 # アプリを起動する
 if __name__ == "__main__":
-    search_word = None
-    if len(sys.argv) == 2:
-        search_word = sys.argv[1]
-    app = GAALogViewerView(search_word)
+    app = GAALogViewerView(search_word=args.search_word, log_dir=args.log_dir)
     app.mainloop()

@@ -111,8 +111,11 @@ class GAALogger:
 
 
 class GAALoggerModel(GAALogger):
-    def __init__(self):
-        super().__init__() #initialize super with default param
+    #default log dir will be chosen if log_dir is None
+    def __init__(self, log_dir=None, debug_result_show=True, wait_sec=3):
+        super().__init__(log_dir=log_dir, debug_result_show=debug_result_show, wait_sec=wait_sec)
+
+        #https://note.nkmk.me/python-import-usage/
         with open(self.log_file_name) as f:
             self.log_list = f.readlines()
 
